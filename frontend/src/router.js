@@ -15,6 +15,13 @@ const router = createRouter({
     { path: '/abate', name: 'abate', component: () => import('./views/AbateView.vue'), meta: SO_GESTOR },
     { path: '/piquetes', name: 'piquetes', component: () => import('./views/PiquetesView.vue') },
     { path: '/perfil', name: 'perfil', component: () => import('./views/PerfilView.vue') },
+    // Financeiro e lotes (somente gestor)
+    { path: '/financeiro', name: 'financeiro', component: () => import('./views/financeiro/VisaoGeralView.vue'), meta: SO_GESTOR },
+    { path: '/financeiro/lancamentos', name: 'lancamentos', component: () => import('./views/financeiro/LancamentosView.vue'), meta: SO_GESTOR },
+    { path: '/financeiro/contas-a-pagar-e-receber', name: 'contas-pagar-receber', component: () => import('./views/financeiro/ContasPagarReceberView.vue'), meta: SO_GESTOR },
+    { path: '/financeiro/fluxo-de-caixa', name: 'fluxo-caixa', component: () => import('./views/financeiro/FluxoCaixaView.vue'), meta: SO_GESTOR },
+    { path: '/financeiro/cadastros', name: 'cadastros-financeiros', component: () => import('./views/financeiro/CadastrosView.vue'), meta: SO_GESTOR },
+    { path: '/lotes', name: 'lotes', component: () => import('./views/LotesView.vue'), meta: SO_GESTOR },
     { path: '/usuarios', name: 'usuarios', component: () => import('./views/UsuariosView.vue'), meta: SO_GESTOR },
     // endereços antigos
     { path: '/manejo', redirect: '/ordenha' },

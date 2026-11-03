@@ -27,4 +27,11 @@ return [
         'miniatura' => 320,      // px da miniatura quadrada (avatar e cartões)
         'tamanho_maximo_kb' => 10240,
     ],
+
+    // Financeiro: comprovantes ficam em disco privado ('local' ou 's3'), baixados só com login.
+    'financeiro' => [
+        'disco_anexos' => env('PECUARIA_DISCO_ANEXOS', 'local'),
+        'tamanho_maximo_anexo_kb' => 10240,
+        'maximo_parcelas' => 120,
+    ],
 ];

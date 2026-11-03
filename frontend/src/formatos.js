@@ -59,3 +59,41 @@ export function mascaraTelefone(texto) {
   const meio = d.length > 10 ? 5 : 4
   return `(${d.slice(0, 2)}) ${d.slice(2, 2 + meio)}${d.length > 2 + meio ? `-${d.slice(2 + meio)}` : ''}`
 }
+
+/** Moeda: "R$ 1.234,56". Arredondamento só na exibição; os cálculos vêm prontos da API. */
+const _moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+export const moeda = (v) => (v == null || v === '' ? '—' : _moeda.format(Number(v)))
+
+/** Moeda compacta para eixos de gráfico: "R$ 12 mil", "R$ 1,2 mi". */
+export function moedaCompacta(v) {
+  const n = Number(v) || 0
+  const abs = Math.abs(n)
+  if (abs >= 1e6) return `R$ ${numero(n / 1e6, abs % 1e6 ? 1 : 0)} mi`
+  if (abs >= 1e3) return `R$ ${numero(n / 1e3, abs % 1e3 && abs < 1e4 ? 1 : 0)} mil`
+  return `R$ ${numero(n, 0)}`
+}
+
+/** "2026-11" → "nov/26". */
+export const mesCurto = (aaaamm) => {
+  const [a, m] = aaaamm.split('-').map(Number)
+  return `${['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'][m - 1]}/${String(a).slice(2)}`
+}
+
+/** Converte o que o usuário digitou ("1.234,56" ou "1234.56") em string decimal para a API. */
+export function valorParaApi(texto) {
+  const s = String(texto ?? '').trim()
+  if (!s) return null
+  return s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s
+}
+
+/** Soma/subtrai meses de uma data AAAA-MM-DD, devolvendo o 1º ou o último dia do mês. */
+export function inicioDoMes(iso = hoje(), deslocamento = 0) {
+  const [a, m] = iso.slice(0, 7).split('-').map(Number)
+  const d = new Date(a, m - 1 + deslocamento, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+export function fimDoMes(iso = hoje(), deslocamento = 0) {
+  const [a, m] = iso.slice(0, 7).split('-').map(Number)
+  const d = new Date(a, m + deslocamento, 0)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}

@@ -1,12 +1,19 @@
 <?php
 
+use App\Http\Controllers\Api\AnexoLancamentoController;
 use App\Http\Controllers\Api\AnimalController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CategoriaFinanceiraController;
+use App\Http\Controllers\Api\ContaFinanceiraController;
 use App\Http\Controllers\Api\EventoReprodutivoController;
+use App\Http\Controllers\Api\FinanceiroController;
 use App\Http\Controllers\Api\FotoAnimalController;
+use App\Http\Controllers\Api\LancamentoController;
+use App\Http\Controllers\Api\LoteController;
 use App\Http\Controllers\Api\ManejoController;
 use App\Http\Controllers\Api\OpcoesController;
 use App\Http\Controllers\Api\PainelController;
+use App\Http\Controllers\Api\PessoaController;
 use App\Http\Controllers\Api\PesagemController;
 use App\Http\Controllers\Api\PiqueteController;
 use App\Http\Controllers\Api\ProducaoLeiteController;
@@ -75,5 +82,30 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('eu/senha', [AuthController::class, 'alterarSenha'])->name('eu.senha');
         Route::apiResource('usuarios', UsuarioController::class)->only(['index', 'store', 'update'])
             ->parameters(['usuarios' => 'usuario']);
+
+        // ---- Financeiro (somente gestor) ----
+        Route::prefix('financeiro')->name('financeiro.')->group(function () {
+            Route::get('resumo', [FinanceiroController::class, 'resumo'])->name('resumo');
+            Route::get('fluxo-caixa', [FinanceiroController::class, 'fluxoCaixa'])->name('fluxo-caixa');
+            Route::get('demonstrativo', [FinanceiroController::class, 'demonstrativo'])->name('demonstrativo');
+
+            Route::apiResource('contas', ContaFinanceiraController::class)->only(['index', 'store', 'update'])
+                ->parameters(['contas' => 'conta']);
+            Route::apiResource('categorias', CategoriaFinanceiraController::class)->only(['index', 'store', 'update'])
+                ->parameters(['categorias' => 'categoria']);
+
+            Route::post('lancamentos/baixa-em-lote', [LancamentoController::class, 'baixarEmLote'])->name('lancamentos.baixa-em-lote');
+            Route::apiResource('lancamentos', LancamentoController::class)->except(['destroy']);
+            Route::post('lancamentos/{lancamento}/baixa', [LancamentoController::class, 'baixar'])->name('lancamentos.baixa');
+            Route::post('lancamentos/{lancamento}/estorno', [LancamentoController::class, 'estornar'])->name('lancamentos.estorno');
+            Route::post('lancamentos/{lancamento}/cancelamento', [LancamentoController::class, 'cancelar'])->name('lancamentos.cancelamento');
+            Route::get('lancamentos/{lancamento}/historico', [LancamentoController::class, 'historico'])->name('lancamentos.historico');
+            Route::post('lancamentos/{lancamento}/anexos', [AnexoLancamentoController::class, 'store'])->name('lancamentos.anexos.store');
+            Route::get('anexos/{anexo}', [AnexoLancamentoController::class, 'download'])->name('anexos.download');
+            Route::delete('anexos/{anexo}', [AnexoLancamentoController::class, 'destroy'])->name('anexos.destroy');
+        });
+
+        Route::apiResource('pessoas', PessoaController::class)->only(['index', 'store', 'update']);
+        Route::apiResource('lotes', LoteController::class)->except(['destroy']);
     });
 });

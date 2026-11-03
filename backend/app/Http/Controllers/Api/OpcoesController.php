@@ -26,6 +26,12 @@ class OpcoesController extends Controller
             'tipo_evento' => $opcoes(Enums\TipoEventoReprodutivo::class),
             'status_piquete' => $opcoes(Enums\StatusPiquete::class),
             'perfil' => array_map(fn ($p) => ['value' => $p->value, 'label' => $p->label(), 'descricao' => $p->descricao()], Enums\Perfil::cases()),
+            'tipo_lancamento' => $opcoes(Enums\TipoLancamento::class),
+            'situacao_lancamento' => Enums\SituacaoLancamento::opcoesDeFiltro(),
+            'forma_pagamento' => $opcoes(Enums\FormaPagamento::class),
+            'grupo_custo' => $opcoes(Enums\GrupoCusto::class),
+            'tipo_conta_financeira' => $opcoes(Enums\TipoContaFinanceira::class),
+            'tipo_pessoa' => $opcoes(Enums\TipoPessoa::class),
             'pecuaria' => config('pecuaria'),
         ]]);
     }

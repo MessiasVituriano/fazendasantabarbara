@@ -8,7 +8,7 @@ Monorepo com a API Laravel (`backend/`) e o painel Vue 3 (`frontend/`), conforme
 # Back-end (PostgreSQL 16+; ajuste DB_* em backend/.env)
 cd backend
 createdb fazenda
-php artisan migrate --seed          # --seed carrega um rebanho de demonstração
+php artisan migrate --seed          # --seed carrega rebanho e financeiro de demonstração (ignorado em produção)
 php artisan serve                   # http://127.0.0.1:8000
 
 # Front-end (Vue 3 + shadcn-vue + Tailwind v4)
@@ -74,6 +74,35 @@ Após alterar o `.env` em produção com `config:cache`, rode `php artisan confi
 | CRUD | `/api/piquetes` | RN03 — `animais_alocados` |
 | POST | `/api/piquetes/{id}/entradas` | `{animal_ids, data_entrada}` — fecha a ocupação anterior de cada animal |
 | POST | `/api/piquetes/{id}/saidas` | `{data_saida, animal_ids?}` — sem `animal_ids` esvazia o piquete |
+
+### Financeiro (somente gestor)
+
+Três datas por lançamento, com significados distintos:
+**competência** (quando o fato aconteceu: base do resultado e do custo do lote), **vencimento** (base de contas a pagar/receber
+e da previsão de caixa) e **pagamento** (quando o dinheiro de fato entrou/saiu: base do saldo e do fluxo de caixa).
+
+- **Realizado × previsto:** só lançamentos `PAGO` mexem no saldo, pelo `valor_pago` (pode ter juros/desconto). Em aberto aparece
+  como *previsto*, nunca somado ao saldo. "Vencido" não é gravado: é um pendente com vencimento anterior a hoje.
+- **Sem exclusão:** lançamentos são *cancelados* (saem dos totais) ou *estornados* (pago → em aberto). Pago não muda valor/conta
+  sem estorno. Tudo fica em `historico_alteracoes` (quem, quando, antes/depois). Contas e categorias são desativadas, não excluídas.
+- **Custo do lote sem duplicidade:** a despesa lançada com `lote_id` alimenta o custo do lote, sem cadastro paralelo. O
+  grupo de custo vem da categoria e é copiado no lançamento, então mudar a categoria depois não reescreve custos antigos. **Aquisição**
+  (compra, frete e comissão de compra) é sempre exibida separada do **custo operacional** da recria.
+- **Precisão:** valores `decimal(14,2)`; parcelamento dividido em centavos (diferença na 1ª parcela); arredondamento só na saída.
+- **Saldo inicial:** cada conta tem saldo inicial numa data; pagamentos anteriores a essa data são recusados.
+- Categorias padrão do plano de contas rural são criadas pela migration (existem também em produção, com `chave` estável).
+- Comprovantes: disco privado `PECUARIA_DISCO_ANEXOS` (padrão `local`), baixados só com token.
+
+| Método | Rota | Observação |
+|---|---|---|
+| GET | `/api/financeiro/resumo?referencia=` | Saldo por conta, mês (caixa e competência), agenda a pagar/receber, acumulado, série 12 meses |
+| GET | `/api/financeiro/fluxo-caixa?inicio=&fim=&conta_financeira_id=&agrupamento=mes\|dia` | Saldo inicial/final, realizado e previsto separados, comparativo com período anterior |
+| GET | `/api/financeiro/demonstrativo?inicio=&fim=&lote_id=` | Resultado por competência, por categoria e grupo de custo |
+| GET/POST/PATCH | `/api/financeiro/lancamentos` | Filtros: `tipo`, `situacao[]` (PENDENTE, VENCIDO, PAGO, CANCELADO, EM_ABERTO), `categoria_id[]`, `lote_id` (ou `sem`), `pessoa_id`, `conta_financeira_id`, `busca`, `inicio`/`fim` sobre `base` (competencia, vencimento, pagamento). POST aceita `parcelas` ou já pago (`data_pagamento` + `conta_financeira_id`) |
+| POST | `/api/financeiro/lancamentos/{id}/baixa`, `/baixa-em-lote`, `/{id}/estorno`, `/{id}/cancelamento` | Baixa em lote é tudo ou nada; cancelamento aceita `parcelas_seguintes` |
+| GET | `/api/financeiro/lancamentos/{id}/historico` | Trilha de auditoria |
+| POST/GET/DELETE | `/api/financeiro/lancamentos/{id}/anexos`, `/api/financeiro/anexos/{id}` | Comprovantes (PDF/imagem/planilha, até 10 MB) |
+| GET/POST/PATCH | `/api/financeiro/contas`, `/api/financeiro/categorias`, `/api/pessoas`, `/api/lotes` | Cadastros; `GET /api/lotes/{id}` traz `custos` (aquisição × operacional × total, por grupo e por mês) |
 
 ### Fotos dos animais
 
