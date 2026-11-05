@@ -11,6 +11,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import http from '@/api/http'
 import { useSessao } from '@/composables/useSessao'
+import { limparLeituras } from '@/offline/cache'
+import { useFilaOffline } from '@/offline/fila'
 
 /** Canto superior direito: alternar tema e menu do usuário (perfil, tema, sair). */
 const router = useRouter()
@@ -28,9 +30,13 @@ const alternarTema = () => (tema.value = escuro.value ? 'light' : 'dark')
 
 const iniciais = computed(() => (usuario.value?.nome ?? '?').split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase())
 
+const { itens: naFila } = useFilaOffline()
+
 async function sair() {
+  if (naFila.value.length && !confirm(`Há ${naFila.value.length} registro(s) feito(s) offline ainda não enviado(s). Eles ficam guardados neste aparelho e sobem no seu próximo login. Sair mesmo assim?`)) return
   try { await http.post('/logout') } catch { /* encerra localmente mesmo sem rede */ }
   encerrar()
+  limparLeituras() // dados da fazenda não ficam no aparelho depois de sair
   router.replace('/entrar')
 }
 </script>

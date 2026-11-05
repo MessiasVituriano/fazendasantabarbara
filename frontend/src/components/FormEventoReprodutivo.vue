@@ -6,18 +6,19 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import http from '../api/http'
 import { useEnvio } from '../composables/useEnvio'
 import { useOpcoes } from '../composables/useOpcoes'
 import { useDataMinima } from '../composables/useDataMinima'
-import { hoje } from '../formatos'
+import { hoje, novoUuid } from '../formatos'
+import { enviarOuGuardar } from '../offline/fila'
 import AlertaErros from './AlertaErros.vue'
 
 /**
  * RN02 — Formulário inteligente de evento reprodutivo.
  * Ao escolher PARTO, os campos do bezerro são inseridos no DOM (v-if) e passam a ser obrigatórios.
  */
-const props = defineProps({ animalId: { type: Number, required: true } })
+const props = defineProps({ animalId: { type: Number, required: true }, descricaoAnimal: { type: String, default: '' } })
+// `salvo` recebe o evento gravado, ou null quando ficou guardado offline para envio posterior.
 const emit = defineEmits(['salvo', 'cancelar'])
 
 const { opcoes } = useOpcoes()
@@ -35,9 +36,13 @@ const mensagensGerais = computed(() => (Object.keys(campos.value).length ? [] : 
 async function salvar() {
   const { brinco_bezerro, sexo_bezerro, nome_bezerro, ...evento } = form
   // Dados do bezerro só seguem no PARTO (a API os rejeita nos demais eventos).
-  const payload = ehParto.value ? { ...evento, brinco_bezerro, sexo_bezerro, nome_bezerro: nome_bezerro || null } : evento
-  const { data } = await enviar(() => http.post('/eventos-reprodutivos', payload))
-  emit('salvo', data.data[0])
+  const payload = { uuid: novoUuid(), ...(ehParto.value ? { ...evento, brinco_bezerro, sexo_bezerro, nome_bezerro: nome_bezerro || null } : evento) }
+  const tipo = opcoes.value?.tipo_evento?.find((t) => t.value === form.tipo_evento)?.label ?? form.tipo_evento
+  const { offline, resposta } = await enviar(() => enviarOuGuardar({
+    metodo: 'post', url: '/eventos-reprodutivos', dados: payload,
+    descricao: `${tipo} · ${props.descricaoAnimal || `animal ${props.animalId}`}`,
+  }))
+  emit('salvo', offline ? null : resposta.data.data[0])
 }
 </script>
 

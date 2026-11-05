@@ -151,4 +151,15 @@ class SanidadeTest extends TestCase
             ->assertJsonFragment(['titulo' => 'Medicamento: Vermífugo'])
             ->assertJsonFragment(['titulo' => 'Aplicação: Antigo']);
     }
+
+    public function test_reenvio_com_mesmo_uuid_nao_duplica_a_aplicacao(): void
+    {
+        $uuid = '2f1d9c4e-8a7b-4c3d-9e2f-1a2b3c4d5e6f';
+        $animal = Animal::factory()->create();
+
+        $id = $this->aplicar(['uuid' => $uuid, 'animal_id' => $animal->id, 'nome_vacina' => 'Aftosa'])->assertCreated()->json('data.id');
+        $this->aplicar(['uuid' => $uuid, 'animal_id' => $animal->id, 'nome_vacina' => 'Aftosa'])->assertOk()->assertJsonPath('data.id', $id);
+
+        $this->assertSame(1, $animal->vacinas()->count());
+    }
 }

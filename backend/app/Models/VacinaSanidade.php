@@ -16,7 +16,7 @@ class VacinaSanidade extends Model
 
     protected $table = 'vacinas_sanidade';
 
-    protected $fillable = ['animal_id', 'tipo', 'categoria_sanitaria_id', 'produto_sanitario_id', 'nome_vacina', 'data_aplicacao', 'dias_carencia_leite_carne'];
+    protected $fillable = ['uuid', 'animal_id', 'tipo', 'categoria_sanitaria_id', 'produto_sanitario_id', 'nome_vacina', 'data_aplicacao', 'dias_carencia_leite_carne'];
 
     protected function casts(): array
     {

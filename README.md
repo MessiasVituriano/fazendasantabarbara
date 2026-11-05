@@ -67,6 +67,24 @@ O script para com erro se a aplicação não subir.
 - Primeiro gestor em produção: `php artisan pecuaria:criar-gestor admin --nome="Fulano"` (pede a senha).
 - Usuários não são excluídos, são **desativados**; desativar, trocar o perfil ou redefinir a senha encerra as sessões abertas. O sistema impede remover o último gestor ativo.
 
+## Registro offline (painel web)
+
+Os registros de manejo funcionam sem internet: **ordenha**, **pesagens**, **produção e pesagem rápidas** da ficha,
+**eventos reprodutivos** e **vacinas/medicamentos**.
+
+- Sem conexão, o registro fica numa fila no `localStorage` do aparelho e sobe sozinho quando a internet volta
+  (também ao abrir o app, ao voltar para a aba e a cada minuto). O indicador no cabeçalho mostra
+  *Offline*, quantos registros faltam enviar e os recusados pelo servidor (com o motivo, para tentar de novo ou descartar).
+- Os envios usam endpoints idempotentes (`uuid` por registro, ou o "salvar turno" da ordenha): reenviar não duplica.
+- As leituras da API ficam guardadas no aparelho (últimas 80 respostas) e são usadas quando não há conexão.
+  Ao entrar, o app pré-carrega rebanho, vacas em lactação, ordenhas de hoje/ontem, últimas pesagens e cadastros sanitários.
+- Um service worker (`frontend/sw.js`, gerado no build com a lista de arquivos) guarda o app para abrir sem internet.
+  Exige HTTPS (ou `localhost`).
+- A fila é por usuário: ao sair com pendências, o sistema avisa, e elas sobem no próximo login do mesmo usuário.
+  As leituras guardadas são apagadas ao sair.
+- O limite de dias do caseiro vale na data do envio: um registro offline que só sobe depois do prazo é recusado e
+  aparece no indicador. Cadastros do gestor, movimentação de piquetes, fotos e financeiro continuam exigindo conexão.
+
 ## Regras parametrizadas (`backend/.env` → `config/pecuaria.php`)
 
 | Variável | Padrão | Uso |
@@ -153,6 +171,7 @@ Os POSTs de produção, pesagem e eventos aceitam `[ {...}, {...} ]`, `{ "regist
 Cada lote é atômico (tudo ou nada). Envie um `uuid` gerado no aparelho em cada registro: um reenvio do mesmo
 lote não duplica nada e responde `200` com `meta.ja_sincronizados`. Eventos de um lote são aplicados em ordem
 cronológica, e um evento mais antigo que o último já registrado entra no histórico sem regredir o status da matriz.
+`POST /api/vacinas` (um registro por vez) também aceita `uuid`: o reenvio devolve a aplicação já gravada.
 
 Todas as rotas, exceto `/api/login`, exigem `Authorization: Bearer <token>`. Rotas de gestão respondem `403` para o caseiro.
 

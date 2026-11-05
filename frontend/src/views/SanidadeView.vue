@@ -15,6 +15,7 @@ import http from '../api/http'
 import AlertaErros from '../components/AlertaErros.vue'
 import FormAplicacaoSanitaria from '../components/FormAplicacaoSanitaria.vue'
 import CabecalhoPagina from '../components/layout/CabecalhoPagina.vue'
+import { avisarGuardadoOffline } from '../offline/fila'
 import { useCadastrosSanitarios } from '../composables/useCadastrosSanitarios'
 import { useEnvio } from '../composables/useEnvio'
 import { useOpcoes } from '../composables/useOpcoes'
@@ -83,8 +84,9 @@ watch(() => filtros.busca, () => { clearTimeout(espera); espera = setTimeout(apl
 const emCarencia = (a) => a.data_fim_carencia >= hoje()
 
 const novaAplicacao = ref(false)
-function aplicacaoSalva() {
-  toast.success('Aplicação registrada')
+function aplicacaoSalva(aplicacao) {
+  if (aplicacao) toast.success('Aplicação registrada')
+  else avisarGuardadoOffline('Aplicação')
   novaAplicacao.value = false
   aplicarFiltros()
 }

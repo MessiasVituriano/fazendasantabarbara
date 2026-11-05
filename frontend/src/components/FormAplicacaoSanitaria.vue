@@ -11,14 +11,16 @@ import { useCadastrosSanitarios } from '../composables/useCadastrosSanitarios'
 import { useDataMinima } from '../composables/useDataMinima'
 import { useEnvio } from '../composables/useEnvio'
 import { useOpcoes } from '../composables/useOpcoes'
-import { hoje } from '../formatos'
+import { hoje, novoUuid } from '../formatos'
+import { enviarOuGuardar } from '../offline/fila'
 
 /**
  * Registro de vacina ou medicamento. A categoria e o produto sugerem a carência, que continua
  * editável. "Outro" libera o nome em campo livre (caso o produto não esteja cadastrado).
  * Sem `animalId`, o formulário mostra a escolha do animal.
  */
-const props = defineProps({ animalId: { type: Number, default: null } })
+const props = defineProps({ animalId: { type: Number, default: null }, descricaoAnimal: { type: String, default: '' } })
+// `salvo` recebe a aplicação gravada, ou null quando ficou guardada offline para envio posterior.
 const emit = defineEmits(['salvo', 'cancelar'])
 
 const SEM_CATEGORIA = 'SEM_CATEGORIA'
@@ -73,16 +75,20 @@ function trocarProduto(produto) {
 
 async function salvar() {
   try {
-    const { data } = await enviar(() => http.post('/vacinas', {
-      animal_id: props.animalId ?? (Number(form.animal_id) || null),
+    const animalId = props.animalId ?? (Number(form.animal_id) || null)
+    const escolhido = animais.value.find((a) => a.id === animalId)
+    const nomeProduto = livre.value ? form.nome : produtosAtivos.value.find((p) => String(p.id) === form.produto)?.nome
+    const { offline, resposta } = await enviar(() => enviarOuGuardar({ metodo: 'post', url: '/vacinas', descricao: `${nomeProduto || 'Aplicação'} · ${props.descricaoAnimal || escolhido?.brinco || `animal ${animalId}`}`, dados: {
+      uuid: novoUuid(),
+      animal_id: animalId,
       tipo: form.tipo,
       categoria_sanitaria_id: form.categoria === SEM_CATEGORIA ? null : Number(form.categoria),
       produto_sanitario_id: livre.value ? null : Number(form.produto),
       nome_vacina: livre.value ? form.nome : null,
       data_aplicacao: form.data_aplicacao,
       dias_carencia_leite_carne: form.dias,
-    }))
-    emit('salvo', data.data)
+    } }))
+    emit('salvo', offline ? null : resposta.data.data)
   } catch { /* erros exibidos no formulário */ }
 }
 
