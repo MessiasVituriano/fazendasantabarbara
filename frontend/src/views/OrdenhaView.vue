@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import { Check, CircleDot, Search, Sun, Sunset, TriangleAlert, Undo2 } from '@lucide/vue'
+import { Check, CircleDot, CloudUpload, Search, Sun, Sunset, TriangleAlert, Undo2 } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,11 +15,13 @@ import CabecalhoPagina from '../components/layout/CabecalhoPagina.vue'
 import { turnoAtual } from '../composables/usePeriodoAtual'
 import { useDataMinima } from '../composables/useDataMinima'
 import { dataBr, hoje, numero } from '../formatos'
+import { avisarGuardadoOffline, useFilaOffline } from '../offline/fila'
 
 /**
  * Ordenha de um turno: cada vaca em lactação com seu campo de litros.
  * Abre no dia de hoje e no turno do relógio (Manhã antes das 12h, Tarde depois).
  * Valores já lançados vêm preenchidos para correção; apagar um campo remove o registro.
+ * Sem internet, o turno fica guardado no aparelho (fila offline) e sobe quando a conexão voltar.
  */
 const data = ref(hoje())
 const dataMinima = useDataMinima()
@@ -33,6 +35,18 @@ const busca = ref('')
 const erros = ref([])
 const errosLinha = ref({})       // animal_id -> mensagem
 const entradas = ref({})         // animal_id -> elemento <input>
+const dadosDoAparelho = ref(false) // telas montadas com dados guardados (sem internet)
+
+// Valores deste turno guardados offline e ainda não enviados: animal_id -> litros (null = remoção).
+const { pendentes, enviarOuGuardar } = useFilaOffline()
+const naFila = computed(() => {
+  const mapa = {}
+  for (const item of pendentes.value) {
+    if (item.url !== '/producoes-leite/turno' || item.dados.data_pesagem !== data.value || item.dados.periodo !== periodo.value) continue
+    for (const r of item.dados.registros) mapa[r.animal_id] = r.quantidade_litros
+  }
+  return mapa
+})
 
 const texto = (v) => (v == null ? '' : Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 }))
 const paraNumero = (t) => {
@@ -42,19 +56,28 @@ const paraNumero = (t) => {
 const diaAnterior = (d) => { const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() - 1); return x.toISOString().slice(0, 10) }
 
 async function registrosDoTurno(dia) {
-  const { data: r } = await http.get('/producoes-leite', {
-    params: { data_inicio: dia, data_fim: dia, periodo: periodo.value, por_pagina: 500 },
-  })
-  return r.data
+  try {
+    const r = await http.get('/producoes-leite', {
+      params: { data_inicio: dia, data_fim: dia, periodo: periodo.value, por_pagina: 500 },
+    })
+    if (r.offline) dadosDoAparelho.value = true
+    return r.data.data
+  } catch (e) {
+    // Sem internet e sem cópia deste turno no aparelho: segue com o turno em branco.
+    if (e.response) throw e
+    dadosDoAparelho.value = true
+    return []
+  }
 }
 
 async function carregar() {
   carregando.value = true
   erros.value = []
   errosLinha.value = {}
+  dadosDoAparelho.value = false
   try {
     const [vacas, doTurno, deOntem] = await Promise.all([
-      http.get('/manejo/ordenha').then((r) => r.data.data),
+      http.get('/manejo/ordenha').then((r) => { if (r.offline) dadosDoAparelho.value = true; return r.data.data }),
       registrosDoTurno(data.value),
       registrosDoTurno(diaAnterior(data.value)),
     ])
@@ -64,6 +87,8 @@ async function carregar() {
     const extras = doTurno.filter((p) => !vacas.some((v) => v.id === p.animal_id))
       .map((p) => ({ id: p.animal_id, brinco: p.animal.brinco, nome: p.animal.nome, sexo: 'F', aptidao: 'LEITE', categoria: 'SECA' }))
 
+    // O que foi lançado offline e ainda não subiu prevalece sobre a última cópia do servidor.
+    for (const [id, litros] of Object.entries(naFila.value)) valor[id] = litros
     linhas.value = [...vacas, ...extras].map((animal) => {
       const t = texto(valor[animal.id])
       return { animal, valor: t, original: t, ontem: ontem[animal.id] ?? null }
@@ -111,17 +136,24 @@ async function salvar() {
   salvando.value = true
   errosLinha.value = {}
   const enviadas = alteradas.value
+  const turno = TURNOS.find((t) => t.value === periodo.value).label.toLowerCase()
   try {
-    const { data: r } = await http.put('/producoes-leite/turno', {
-      data_pesagem: data.value,
-      periodo: periodo.value,
-      registros: enviadas.map((l) => ({ animal_id: l.animal.id, quantidade_litros: paraNumero(l.valor) })),
+    const { offline, resposta } = await enviarOuGuardar({
+      metodo: 'put',
+      url: '/producoes-leite/turno',
+      dados: {
+        data_pesagem: data.value,
+        periodo: periodo.value,
+        registros: enviadas.map((l) => ({ animal_id: l.animal.id, quantidade_litros: paraNumero(l.valor) })),
+      },
+      descricao: `Ordenha da ${turno} de ${dataBr(data.value)} (${enviadas.length} vaca(s))`,
     })
-    const turno = TURNOS.find((t) => t.value === periodo.value).label.toLowerCase()
+    enviadas.forEach((l) => (l.original = l.valor))
+    if (offline) return avisarGuardadoOffline(`Ordenha da ${turno} de ${dataBr(data.value)}`)
+    const r = resposta.data
     toast.success(`Ordenha da ${turno} de ${dataBr(data.value)} salva`, {
       description: `${r.meta.gravados} lançamento(s)${r.meta.removidos ? `, ${r.meta.removidos} removido(s)` : ''} · total do turno ${numero(r.meta.total_litros, 1)} L`,
     })
-    enviadas.forEach((l) => (l.original = l.valor))
   } catch (e) {
     erros.value = e.mensagens
     for (const [campo, msg] of Object.entries(e.campos ?? {})) {
@@ -159,6 +191,9 @@ const desfazer = () => linhas.value.forEach((l) => (l.valor = l.original))
 
   <main class="space-y-4 px-4 py-6 md:px-6">
     <AlertaErros :mensagens="erros" />
+    <p v-if="dadosDoAparelho" class="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+      Sem internet: mostrando os dados guardados neste aparelho. Lançamentos feitos em outro aparelho podem não aparecer.
+    </p>
 
     <Card class="gap-0 overflow-hidden py-0" :class="{ 'opacity-50': carregando }">
       <ul class="divide-y">
@@ -194,8 +229,9 @@ const desfazer = () => linhas.value.forEach((l) => (l.valor = l.original))
             </div>
             <p v-if="errosLinha[l.animal.id]" class="mt-1 text-xs text-destructive">{{ errosLinha[l.animal.id] }}</p>
           </div>
-          <span class="hidden sm:block" :title="l.valor !== l.original ? 'Não salvo' : (l.original ? 'Salvo' : '')">
+          <span class="hidden sm:block" :title="l.valor !== l.original ? 'Não salvo' : (l.animal.id in naFila ? 'Guardado no aparelho, aguardando envio' : (l.original ? 'Salvo' : ''))">
             <CircleDot v-if="l.valor.trim() !== l.original.trim()" class="size-4 text-amber-500" />
+            <CloudUpload v-else-if="l.animal.id in naFila" class="size-4 text-amber-600 dark:text-amber-400" />
             <Check v-else-if="l.original" class="size-4 text-emerald-600 dark:text-emerald-400" />
           </span>
         </li>

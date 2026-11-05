@@ -34,6 +34,11 @@ class VacinaController extends Controller
     {
         $dados = $request->validated();
 
+        // Reenvio da sincronização offline: devolve o registro já gravado sem duplicar.
+        if (! empty($dados['uuid']) && $existente = VacinaSanidade::firstWhere('uuid', $dados['uuid'])) {
+            return new JsonResource($existente->load('categoria:id,nome'));
+        }
+
         // Nome e categoria são copiados do produto: renomeá-lo depois não reescreve o histórico.
         if ($produto = ProdutoSanitario::find($dados['produto_sanitario_id'] ?? null)) {
             $dados['nome_vacina'] = $produto->nome;

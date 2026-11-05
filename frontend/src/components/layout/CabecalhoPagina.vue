@@ -3,6 +3,7 @@ import { Menu } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useMenu } from '@/composables/useMenu'
+import IndicadorSincronizacao from './IndicadorSincronizacao.vue'
 import MenuUsuario from './MenuUsuario.vue'
 
 /**
@@ -21,8 +22,8 @@ const { aberto } = useMenu()
       <h1 class="min-w-0 truncate text-base font-semibold">{{ titulo }}</h1>
       <Badge v-if="contador !== null" variant="secondary" class="shrink-0 tabular-nums">{{ contador }}</Badge>
 
-      <!-- tema e usuário: sempre na primeira linha, à direita -->
-      <div class="ml-auto md:order-last" :class="{ 'md:ml-0 md:border-l md:pl-2': $slots.acoes }"><MenuUsuario /></div>
+      <!-- conexão, tema e usuário: sempre na primeira linha, à direita -->
+      <div class="ml-auto flex items-center gap-1 md:order-last" :class="{ 'md:ml-0 md:border-l md:pl-2': $slots.acoes }"><IndicadorSincronizacao /><MenuUsuario /></div>
 
       <!-- ações da página: linha própria no celular, à direita no desktop -->
       <div v-if="$slots.acoes" class="order-last flex w-full flex-wrap items-center gap-2 md:order-none md:ml-auto md:w-auto md:justify-end">

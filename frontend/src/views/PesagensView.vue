@@ -12,6 +12,7 @@ import AvatarAnimal from '../components/AvatarAnimal.vue'
 import CabecalhoPagina from '../components/layout/CabecalhoPagina.vue'
 import { useDataMinima } from '../composables/useDataMinima'
 import { dataBr, hoje, novoUuid, numero } from '../formatos'
+import { avisarGuardadoOffline, enviarOuGuardar } from '../offline/fila'
 
 /** Pesagem em lote do gado de corte, com último peso e prévia do GMD de cada animal. */
 const data = ref(hoje())
@@ -66,10 +67,14 @@ async function salvar() {
   errosLinha.value = {}
   const enviadas = preenchidas.value
   try {
-    const { data: r } = await http.post('/pesagens', enviadas.map((l) => ({
-      uuid: novoUuid(), animal_id: l.animal.id, data_pesagem: data.value, peso_kg: paraNumero(l.valor),
-    })))
-    toast.success(`Pesagem de ${dataBr(data.value)} salva`, { description: `${r.meta.criados} animal(is) pesado(s)` })
+    const { offline, resposta } = await enviarOuGuardar({
+      metodo: 'post',
+      url: '/pesagens',
+      dados: enviadas.map((l) => ({ uuid: novoUuid(), animal_id: l.animal.id, data_pesagem: data.value, peso_kg: paraNumero(l.valor) })),
+      descricao: `Pesagem de ${dataBr(data.value)} (${enviadas.length} animal(is))`,
+    })
+    if (offline) avisarGuardadoOffline(`Pesagem de ${dataBr(data.value)}`)
+    else toast.success(`Pesagem de ${dataBr(data.value)} salva`, { description: `${resposta.data.meta.criados} animal(is) pesado(s)` })
     await carregar()
   } catch (e) {
     erros.value = e.mensagens

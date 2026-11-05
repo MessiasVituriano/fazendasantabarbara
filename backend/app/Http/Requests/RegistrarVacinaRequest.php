@@ -18,6 +18,7 @@ class RegistrarVacinaRequest extends FormRequest
         $tipo = is_string($this->input('tipo')) ? $this->input('tipo') : '';
 
         return [
+            'uuid' => ['nullable', 'uuid'],
             'animal_id' => ['required', 'integer', 'exists:animais,id'],
             'tipo' => ['required', Rule::enum(TipoProdutoSanitario::class)],
             'categoria_sanitaria_id' => ['nullable', 'integer',

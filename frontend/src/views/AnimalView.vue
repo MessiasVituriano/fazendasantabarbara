@@ -22,6 +22,7 @@ import { useEnvio } from '../composables/useEnvio'
 import { turnoAtual } from '../composables/usePeriodoAtual'
 import { useDataMinima } from '../composables/useDataMinima'
 import { dataBr, hoje, idade, novoUuid } from '../formatos'
+import { avisarGuardadoOffline, enviarOuGuardar } from '../offline/fila'
 
 const props = defineProps({ id: { type: String, required: true } })
 
@@ -75,25 +76,32 @@ function abrir(tipo) {
 async function salvarRapido() {
   const animal_id = animal.value.id
   const decimal = (v) => String(v).replace(',', '.')
+  const quem = descricaoAnimal.value
   const req = {
-    pesagem: () => http.post('/pesagens', { uuid: novoUuid(), animal_id, data_pesagem: rapido.data, peso_kg: decimal(rapido.peso_kg) }),
-    producao: () => http.put('/producoes-leite/turno', { data_pesagem: rapido.data, periodo: rapido.periodo, registros: [{ animal_id, quantidade_litros: decimal(rapido.quantidade_litros) }] }),
+    pesagem: { metodo: 'post', url: '/pesagens', descricao: `Pesagem de ${dataBr(rapido.data)} · ${quem}`,
+      dados: { uuid: novoUuid(), animal_id, data_pesagem: rapido.data, peso_kg: decimal(rapido.peso_kg) } },
+    producao: { metodo: 'put', url: '/producoes-leite/turno', descricao: `Produção de leite de ${dataBr(rapido.data)} (${rapido.periodo === 'MANHA' ? 'manhã' : 'tarde'}) · ${quem}`,
+      dados: { data_pesagem: rapido.data, periodo: rapido.periodo, registros: [{ animal_id, quantidade_litros: decimal(rapido.quantidade_litros) }] } },
   }
   try {
-    await enviar(req[modal.value])
-    toast.success(`${TITULOS[modal.value]} registrada`)
+    const { offline } = await enviar(() => enviarOuGuardar(req[modal.value]))
+    if (offline) avisarGuardadoOffline(TITULOS[modal.value])
+    else toast.success(`${TITULOS[modal.value]} registrada`)
     modal.value = null
-    carregar()
+    if (!offline) carregar()
   } catch { /* erros no formulário */ }
 }
-function eventoSalvo() {
-  toast.success('Evento reprodutivo registrado')
+const descricaoAnimal = computed(() => animal.value && [animal.value.brinco, animal.value.nome].filter(Boolean).join(' · '))
+function eventoSalvo(evento) {
   modal.value = null
+  if (!evento) return avisarGuardadoOffline('Evento reprodutivo')
+  toast.success('Evento reprodutivo registrado')
   carregar()
 }
-function aplicacaoSalva() {
-  toast.success('Aplicação registrada')
+function aplicacaoSalva(aplicacao) {
   modal.value = null
+  if (!aplicacao) return avisarGuardadoOffline('Aplicação')
+  toast.success('Aplicação registrada')
   carregar()
 }
 </script>
@@ -175,9 +183,9 @@ function aplicacaoSalva() {
         <DialogDescription v-if="animal">{{ animal.nome || animal.brinco }} · {{ animal.brinco }}</DialogDescription>
       </DialogHeader>
 
-      <FormEventoReprodutivo v-if="modal === 'evento'" :animal-id="animal.id" @salvo="eventoSalvo" @cancelar="modal = null" />
+      <FormEventoReprodutivo v-if="modal === 'evento'" :animal-id="animal.id" :descricao-animal="descricaoAnimal" @salvo="eventoSalvo" @cancelar="modal = null" />
 
-      <FormAplicacaoSanitaria v-else-if="modal === 'vacina'" :animal-id="animal.id" @salvo="aplicacaoSalva" @cancelar="modal = null" />
+      <FormAplicacaoSanitaria v-else-if="modal === 'vacina'" :animal-id="animal.id" :descricao-animal="descricaoAnimal" @salvo="aplicacaoSalva" @cancelar="modal = null" />
 
       <form v-else id="form-rapido" class="grid gap-4" @submit.prevent="salvarRapido">
         <AlertaErros :mensagens="Object.keys(campos).length ? [] : mensagens" />
