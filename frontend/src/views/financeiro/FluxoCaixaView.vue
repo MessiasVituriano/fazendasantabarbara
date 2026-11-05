@@ -58,6 +58,8 @@ watch([periodo, conta, agrupamento], carregar, { immediate: true, deep: true })
 
 const rotulo = (p) => (p.length > 7 ? dataBr(p) : mesCurto(p))
 const temAbertura = computed(() => dados.value?.totais.abertura_contas !== 0)
+const temCapital = computed(() => !!dados.value && (dados.value.totais.aportes !== 0 || dados.value.totais.retiradas !== 0))
+const colunasRealizado = computed(() => 5 + (temAbertura.value ? 1 : 0) + (temCapital.value ? 2 : 0))
 const temPrevisao = computed(() => !!dados.value && !dados.value.conta_id)
 const vencidosPrevistos = computed(() => {
   const v = dados.value?.previsto_inclui_vencidos
@@ -70,9 +72,9 @@ const maior = (lista) => Math.max(1, ...lista.map((c) => c.total))
 function exportarCsv() {
   const d = dados.value
   const n = (v) => numero(v, 2).replace(/\./g, '')
-  const cab = ['Período', 'Saldo inicial', ...(temAbertura.value ? ['Abertura de contas'] : []), 'Entradas', 'Saídas', 'Resultado', 'Saldo final',
+  const cab = ['Período', 'Saldo inicial', ...(temAbertura.value ? ['Abertura de contas'] : []), ...(temCapital.value ? ['Aportes', 'Retiradas'] : []), 'Entradas', 'Saídas', 'Resultado', 'Saldo final',
     ...(temPrevisao.value ? ['Entradas previstas', 'Saídas previstas', 'Saldo projetado'] : [])]
-  const linhas = d.periodos.map((p) => [rotulo(p.periodo), n(p.saldo_inicial), ...(temAbertura.value ? [n(p.abertura_contas)] : []), n(p.entradas), n(p.saidas),
+  const linhas = d.periodos.map((p) => [rotulo(p.periodo), n(p.saldo_inicial), ...(temAbertura.value ? [n(p.abertura_contas)] : []), ...(temCapital.value ? [n(p.aportes), n(p.retiradas)] : []), n(p.entradas), n(p.saidas),
     n(p.resultado), n(p.saldo_final), ...(temPrevisao.value ? [n(p.entradas_previstas), n(p.saidas_previstas), n(p.saldo_projetado)] : [])])
   const csv = '﻿' + [cab, ...linhas].map((l) => l.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n')
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
@@ -133,7 +135,10 @@ function exportarCsv() {
         <Card>
           <CardHeader><CardDescription>Saldo final (realizado)</CardDescription>
             <CardTitle class="text-xl tabular-nums" :class="corValor(dados.saldo_final)">{{ moeda(dados.saldo_final) }}</CardTitle></CardHeader>
-          <CardContent v-if="temAbertura" class="text-xs text-muted-foreground">Inclui {{ moeda(dados.totais.abertura_contas) }} de contas abertas no período.</CardContent>
+          <CardContent v-if="temAbertura || temCapital" class="space-y-0.5 text-xs text-muted-foreground">
+            <p v-if="temAbertura">Inclui {{ moeda(dados.totais.abertura_contas) }} de contas abertas no período.</p>
+            <p v-if="temCapital">Inclui {{ moeda(dados.totais.aportes) }} de aportes e {{ moeda(dados.totais.retiradas) }} de retiradas.</p>
+          </CardContent>
         </Card>
         <Card class="border-dashed">
           <CardHeader><CardDescription>Saldo projetado (previsto) · {{ dataBr(dados.fim) }}</CardDescription>
@@ -184,19 +189,26 @@ function exportarCsv() {
       <Card>
         <CardHeader>
           <CardTitle class="text-base">Detalhamento</CardTitle>
-          <CardDescription>Realizado = pagamentos efetivados. Previsto = contas em aberto pela data de vencimento (nunca entram no saldo).</CardDescription>
+          <CardDescription>
+            Realizado = pagamentos efetivados. Previsto = contas em aberto pela data de vencimento (nunca entram no saldo).
+            <template v-if="temCapital">Aportes e retiradas mudam o saldo, mas não entram em entradas, saídas nem resultado.</template>
+          </CardDescription>
         </CardHeader>
         <CardContent class="overflow-x-auto">
           <Table class="min-w-[760px]">
             <TableHeader>
               <TableRow>
                 <TableHead rowspan="2">Período</TableHead>
-                <TableHead :colspan="temAbertura ? 6 : 5" class="text-center">Realizado</TableHead>
+                <TableHead :colspan="colunasRealizado" class="text-center">Realizado</TableHead>
                 <TableHead v-if="temPrevisao" colspan="3" class="border-l text-center italic">Previsto</TableHead>
               </TableRow>
               <TableRow>
                 <TableHead class="text-right">Saldo inicial</TableHead>
                 <TableHead v-if="temAbertura" class="text-right">Abertura de contas</TableHead>
+                <template v-if="temCapital">
+                  <TableHead class="text-right">Aportes</TableHead>
+                  <TableHead class="text-right">Retiradas</TableHead>
+                </template>
                 <TableHead class="text-right">Entradas</TableHead>
                 <TableHead class="text-right">Saídas</TableHead>
                 <TableHead class="text-right">Resultado</TableHead>
@@ -213,6 +225,10 @@ function exportarCsv() {
                 <TableCell class="font-medium">{{ rotulo(p.periodo) }}</TableCell>
                 <TableCell class="text-right" :class="corValor(p.saldo_inicial)">{{ moeda(p.saldo_inicial) }}</TableCell>
                 <TableCell v-if="temAbertura" class="text-right">{{ p.abertura_contas ? moeda(p.abertura_contas) : '—' }}</TableCell>
+                <template v-if="temCapital">
+                  <TableCell class="text-right">{{ p.aportes ? moeda(p.aportes) : '—' }}</TableCell>
+                  <TableCell class="text-right">{{ p.retiradas ? moeda(p.retiradas) : '—' }}</TableCell>
+                </template>
                 <TableCell class="text-right text-emerald-700 dark:text-emerald-400">{{ p.entradas ? moeda(p.entradas) : '—' }}</TableCell>
                 <TableCell class="text-right text-red-700 dark:text-red-400">{{ p.saidas ? moeda(p.saidas) : '—' }}</TableCell>
                 <TableCell class="text-right" :class="corValor(p.resultado)">{{ moeda(p.resultado) }}</TableCell>
@@ -229,6 +245,10 @@ function exportarCsv() {
                 <TableCell>Total</TableCell>
                 <TableCell class="text-right">{{ moeda(dados.saldo_inicial) }}</TableCell>
                 <TableCell v-if="temAbertura" class="text-right">{{ moeda(dados.totais.abertura_contas) }}</TableCell>
+                <template v-if="temCapital">
+                  <TableCell class="text-right">{{ moeda(dados.totais.aportes) }}</TableCell>
+                  <TableCell class="text-right">{{ moeda(dados.totais.retiradas) }}</TableCell>
+                </template>
                 <TableCell class="text-right">{{ moeda(dados.totais.entradas) }}</TableCell>
                 <TableCell class="text-right">{{ moeda(dados.totais.saidas) }}</TableCell>
                 <TableCell class="text-right" :class="corValor(dados.totais.resultado)">{{ moeda(dados.totais.resultado) }}</TableCell>

@@ -7,7 +7,7 @@ use App\Models\Concerns\Auditavel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-/** Fornecedor e/ou cliente (comprador de gado, casa agropecuária, transportador...). */
+/** Fornecedor e/ou cliente (comprador de gado, casa agropecuária, transportador...) ou investidor/sócio. */
 class Pessoa extends Model
 {
     use Auditavel, HasFactory;

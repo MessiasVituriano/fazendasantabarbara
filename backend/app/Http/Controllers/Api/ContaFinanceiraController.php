@@ -28,9 +28,10 @@ class ContaFinanceiraController extends Controller
     {
         $dados = $request->validated();
         if (isset($dados['data_saldo_inicial'])
-            && $conta->lancamentos()->pagos()->where('data_pagamento', '<', $dados['data_saldo_inicial'])->exists()) {
+            && ($conta->lancamentos()->pagos()->where('data_pagamento', '<', $dados['data_saldo_inicial'])->exists()
+                || $conta->movimentosCapital()->validos()->where('data_movimento', '<', $dados['data_saldo_inicial'])->exists())) {
             throw new RegraNegocioException(
-                'Há pagamentos nesta conta anteriores a essa data. A data do saldo inicial deve ser igual ou anterior ao primeiro pagamento.',
+                'Há pagamentos, aportes ou retiradas nesta conta anteriores a essa data. A data do saldo inicial deve ser igual ou anterior ao primeiro deles.',
                 'SALDO_INICIAL_POSTERIOR', 422, '/data_saldo_inicial',
             );
         }

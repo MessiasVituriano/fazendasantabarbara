@@ -12,10 +12,11 @@ use App\Http\Controllers\Api\FotoAnimalController;
 use App\Http\Controllers\Api\LancamentoController;
 use App\Http\Controllers\Api\LoteController;
 use App\Http\Controllers\Api\ManejoController;
+use App\Http\Controllers\Api\MovimentoCapitalController;
 use App\Http\Controllers\Api\OpcoesController;
 use App\Http\Controllers\Api\PainelController;
-use App\Http\Controllers\Api\PessoaController;
 use App\Http\Controllers\Api\PesagemController;
+use App\Http\Controllers\Api\PessoaController;
 use App\Http\Controllers\Api\PiqueteController;
 use App\Http\Controllers\Api\ProducaoLeiteController;
 use App\Http\Controllers\Api\ProdutoSanitarioController;
@@ -111,6 +112,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('lancamentos/{lancamento}/anexos', [AnexoLancamentoController::class, 'store'])->name('lancamentos.anexos.store');
             Route::get('anexos/{anexo}', [AnexoLancamentoController::class, 'download'])->name('anexos.download');
             Route::delete('anexos/{anexo}', [AnexoLancamentoController::class, 'destroy'])->name('anexos.destroy');
+
+            Route::apiResource('aportes-retiradas', MovimentoCapitalController::class)->only(['index', 'store'])
+                ->parameters(['aportes-retiradas' => 'movimento']);
+            Route::post('aportes-retiradas/{movimento}/cancelamento', [MovimentoCapitalController::class, 'cancelar'])->name('aportes-retiradas.cancelamento');
         });
 
         Route::apiResource('pessoas', PessoaController::class)->only(['index', 'store', 'update']);

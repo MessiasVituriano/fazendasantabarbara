@@ -21,6 +21,7 @@ const router = createRouter({
     { path: '/financeiro/lancamentos', name: 'lancamentos', component: () => import('./views/financeiro/LancamentosView.vue'), meta: SO_GESTOR },
     { path: '/financeiro/contas-a-pagar-e-receber', name: 'contas-pagar-receber', component: () => import('./views/financeiro/ContasPagarReceberView.vue'), meta: SO_GESTOR },
     { path: '/financeiro/fluxo-de-caixa', name: 'fluxo-caixa', component: () => import('./views/financeiro/FluxoCaixaView.vue'), meta: SO_GESTOR },
+    { path: '/financeiro/aportes-e-retiradas', name: 'aportes-retiradas', component: () => import('./views/financeiro/AportesRetiradasView.vue'), meta: SO_GESTOR },
     { path: '/financeiro/cadastros', name: 'cadastros-financeiros', component: () => import('./views/financeiro/CadastrosView.vue'), meta: SO_GESTOR },
     { path: '/lotes', name: 'lotes', component: () => import('./views/LotesView.vue'), meta: SO_GESTOR },
     { path: '/usuarios', name: 'usuarios', component: () => import('./views/UsuariosView.vue'), meta: SO_GESTOR },

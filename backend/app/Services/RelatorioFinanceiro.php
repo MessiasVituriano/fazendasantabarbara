@@ -9,9 +9,10 @@ use App\Models\CategoriaFinanceira;
 use App\Models\ContaFinanceira;
 use App\Models\Lancamento;
 use App\Models\Lote;
+use App\Models\MovimentoCapital;
+use App\Models\Pessoa;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Leituras do financeiro. Convenções:
@@ -72,13 +73,26 @@ class RelatorioFinanceiro
 
         // Saldo inicial: contas abertas antes do período + tudo que foi pago antes dele.
         $contas = ContaFinanceira::query()->when($contaId, fn ($q) => $q->whereKey($contaId));
+        $capitalAnterior = MovimentoCapital::validos()->where('data_movimento', '<', $de)
+            ->when($contaId, fn ($q) => $q->where('conta_financeira_id', $contaId))
+            ->groupBy('tipo')->selectRaw('tipo, SUM(valor) AS total')->toBase()->pluck('total', 'tipo');
         $saldoInicial = (float) (clone $contas)->where('data_saldo_inicial', '<', $de)->sum('saldo_inicial')
-            + $this->liquidoPago(fn ($q) => $q->where('data_pagamento', '<', $de), $contaId);
+            + $this->liquidoPago(fn ($q) => $q->where('data_pagamento', '<', $de), $contaId)
+            + (float) ($capitalAnterior['APORTE'] ?? 0) - (float) ($capitalAnterior['RETIRADA'] ?? 0);
 
         $periodos = [];
         for ($d = $inicio->copy(); $d->lte($fim); $agrupamento === 'dia' ? $d->addDay() : $d->addMonthNoOverflow()->startOfMonth()) {
             $k = $chave($d->toDateString());
-            $periodos[$k] ??= ['periodo' => $k, 'abertura_contas' => 0.0, 'entradas' => 0.0, 'saidas' => 0.0, 'entradas_previstas' => 0.0, 'saidas_previstas' => 0.0];
+            $periodos[$k] ??= ['periodo' => $k, 'abertura_contas' => 0.0, 'aportes' => 0.0, 'retiradas' => 0.0, 'entradas' => 0.0, 'saidas' => 0.0, 'entradas_previstas' => 0.0, 'saidas_previstas' => 0.0];
+        }
+
+        // Aportes e retiradas mexem no saldo, mas ficam em colunas próprias: não são entradas nem saídas da operação.
+        $capital = MovimentoCapital::validos()->whereBetween('data_movimento', [$de, $ate])
+            ->when($contaId, fn ($q) => $q->where('conta_financeira_id', $contaId))
+            ->groupBy('data_movimento', 'tipo')
+            ->selectRaw('data_movimento, tipo, SUM(valor) AS total')->toBase()->get();
+        foreach ($capital as $c) {
+            $periodos[$chave(substr($c->data_movimento, 0, 10))][$c->tipo === 'APORTE' ? 'aportes' : 'retiradas'] += (float) $c->total;
         }
 
         foreach ((clone $contas)->whereBetween('data_saldo_inicial', [$de, $ate])->get() as $c) {
@@ -114,8 +128,9 @@ class RelatorioFinanceiro
         $linhas = [];
         foreach ($periodos as $p) {
             $p['saldo_inicial'] = round($saldo, 2);
-            $saldo += $p['abertura_contas'] + $p['entradas'] - $p['saidas'];
-            $projetado += $p['abertura_contas'] + $p['entradas'] - $p['saidas'] + $p['entradas_previstas'] - $p['saidas_previstas'];
+            $realizado = $p['abertura_contas'] + $p['aportes'] - $p['retiradas'] + $p['entradas'] - $p['saidas'];
+            $saldo += $realizado;
+            $projetado += $realizado + $p['entradas_previstas'] - $p['saidas_previstas'];
             $linhas[] = array_map(fn ($v) => is_float($v) ? round($v, 2) : $v, [
                 ...$p,
                 'resultado' => $p['entradas'] - $p['saidas'],
@@ -214,6 +229,28 @@ class RelatorioFinanceiro
             'resultado_competencia' => round($receitas['total'] - $total, 2),
             'mensal' => $mensal,
         ];
+    }
+
+    /**
+     * Quanto cada investidor aportou e retirou desde o início (sem cancelados), do maior saldo para o menor.
+     *
+     * @return list<array{pessoa_id: int, investidor: string, ativo: bool, aportes: float, retiradas: float, liquido: float}>
+     */
+    public function posicaoInvestidores(): array
+    {
+        $linhas = MovimentoCapital::validos()->groupBy('pessoa_id')
+            ->selectRaw("pessoa_id, SUM(CASE WHEN tipo = 'APORTE' THEN valor ELSE 0 END) AS aportes, SUM(CASE WHEN tipo = 'RETIRADA' THEN valor ELSE 0 END) AS retiradas")
+            ->toBase()->get();
+        $pessoas = Pessoa::whereKey($linhas->pluck('pessoa_id'))->get()->keyBy('id');
+
+        return $linhas->map(fn ($l) => [
+            'pessoa_id' => $l->pessoa_id,
+            'investidor' => $pessoas[$l->pessoa_id]->nome,
+            'ativo' => $pessoas[$l->pessoa_id]->ativo,
+            'aportes' => round((float) $l->aportes, 2),
+            'retiradas' => round((float) $l->retiradas, 2),
+            'liquido' => round((float) $l->aportes - (float) $l->retiradas, 2),
+        ])->sortByDesc('liquido')->values()->all();
     }
 
     // ------------------------------------------------------------------
@@ -347,6 +384,8 @@ class RelatorioFinanceiro
 
         return [
             'abertura_contas' => $soma('abertura_contas'),
+            'aportes' => $soma('aportes'),
+            'retiradas' => $soma('retiradas'),
             'entradas' => $soma('entradas'),
             'saidas' => $soma('saidas'),
             'resultado' => round($soma('entradas') - $soma('saidas'), 2),

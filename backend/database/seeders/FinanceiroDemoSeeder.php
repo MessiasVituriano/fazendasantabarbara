@@ -96,6 +96,17 @@ class FinanceiroDemoSeeder extends Seeder
         }
         $this->lancar('RECEITA', 'receitas_diversas', 'Venda de esterco curtido', 1200, $hoje->copy()->subDays(20), $hoje->copy()->subDays(20), null, null, conta: 'caixa');
 
+        // Investidores: aportes para a recria e uma retirada.
+        $socia = $p('Helena Prado (sócia)', 'INVESTIDOR');
+        $investidor = $p('Carlos Mendes', 'INVESTIDOR');
+        $capital = fn ($tipo, $pessoa, $valor, $data) => $this->fin->registrarMovimentoCapital([
+            'tipo' => $tipo, 'pessoa_id' => $pessoa->id, 'valor' => $valor, 'data_movimento' => $data->toDateString(),
+            'conta_financeira_id' => $this->banco->id, 'forma_pagamento' => 'TRANSFERENCIA',
+        ]);
+        $capital('APORTE', $socia, '150000.00', $c1);
+        $capital('APORTE', $investidor, '80000.00', $c2);
+        $capital('RETIRADA', $socia, '20000.00', $hoje->copy()->subDays(15));
+
         // Algumas contas ficam vencidas para a demonstração (não pagas).
         Lancamento::where('situacao', 'PAGO')->where('tipo', 'DESPESA')
             ->whereBetween('data_vencimento', [$hoje->copy()->subDays(25)->toDateString(), $hoje->copy()->subDay()->toDateString()])

@@ -8,7 +8,7 @@ use App\Models\Pessoa;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-/** Fornecedores e clientes. */
+/** Fornecedores, clientes e investidores. */
 class PessoaController extends Controller
 {
     public function index(Request $request): JsonResponse

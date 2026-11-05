@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { ArrowLeftRight, Beef, Boxes, CalendarClock, Fence, LayoutDashboard, Milk, Scale, Settings2, Syringe, Tags, UserCog, Wallet, Waves } from '@lucide/vue'
+import { ArrowLeftRight, Beef, Boxes, CalendarClock, Fence, HandCoins, LayoutDashboard, Milk, Scale, Settings2, Syringe, Tags, UserCog, Wallet, Waves } from '@lucide/vue'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useSessao } from '@/composables/useSessao'
 
@@ -21,6 +21,7 @@ const TODOS = [
   { rotulo: 'Lançamentos', icone: ArrowLeftRight, para: '/financeiro/lancamentos', gestor: true },
   { rotulo: 'A pagar e receber', icone: CalendarClock, para: '/financeiro/contas-a-pagar-e-receber', gestor: true },
   { rotulo: 'Fluxo de caixa', icone: Waves, para: '/financeiro/fluxo-de-caixa', gestor: true },
+  { rotulo: 'Aportes e retiradas', icone: HandCoins, para: '/financeiro/aportes-e-retiradas', gestor: true },
   { rotulo: 'Contas e categorias', icone: Settings2, para: '/financeiro/cadastros', gestor: true },
   { secao: 'Administração', rotulo: 'Usuários', icone: UserCog, para: '/usuarios', gestor: true },
 ]

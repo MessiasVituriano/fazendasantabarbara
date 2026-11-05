@@ -20,7 +20,7 @@ import { useEnvio } from '../../composables/useEnvio'
 import { useOpcoes } from '../../composables/useOpcoes'
 import { dataBr, formatarTelefone, hoje, mascaraTelefone, moeda, valorParaApi } from '../../formatos'
 
-/** Cadastros do financeiro: contas (caixa/banco), categorias (plano de contas) e fornecedores/clientes. */
+/** Cadastros do financeiro: contas (caixa/banco), categorias (plano de contas) e fornecedores/clientes/investidores. */
 const route = useRoute()
 const router = useRouter()
 const ABAS = ['contas', 'categorias', 'pessoas']
@@ -159,7 +159,7 @@ const SEL = 'px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foregr
       <ToggleGroup v-model="aba" type="single" variant="outline" size="sm" aria-label="Seção">
         <ToggleGroupItem value="contas" :class="SEL">Contas</ToggleGroupItem>
         <ToggleGroupItem value="categorias" :class="SEL">Categorias</ToggleGroupItem>
-        <ToggleGroupItem value="pessoas" :class="SEL">Fornecedores e clientes</ToggleGroupItem>
+        <ToggleGroupItem value="pessoas" :class="SEL">Fornecedores, clientes e investidores</ToggleGroupItem>
       </ToggleGroup>
     </template>
   </CabecalhoPagina>
@@ -171,7 +171,7 @@ const SEL = 'px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foregr
     <template v-if="aba === 'contas'">
       <p class="text-sm text-muted-foreground">
         Onde o dinheiro da fazenda fica: caixa (dinheiro vivo) e contas bancárias. O saldo atual é calculado
-        a partir do saldo inicial e de tudo que foi efetivamente pago ou recebido.
+        a partir do saldo inicial, de tudo que foi efetivamente pago ou recebido e dos aportes e retiradas de investidores.
       </p>
       <div class="rounded-xl border bg-card p-4">
         <p class="text-xs text-muted-foreground">Saldo total disponível</p>
@@ -254,7 +254,7 @@ const SEL = 'px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foregr
               <TableCell class="text-sm">{{ formatarTelefone(p.telefone) || '—' }}</TableCell>
               <TableCell class="text-right"><Button variant="ghost" size="icon" :aria-label="`Editar ${p.nome}`" @click="abrirPessoa(p)"><Pencil /></Button></TableCell>
             </TableRow>
-            <TableRow v-if="!pessoas.length"><TableCell colspan="5" class="text-muted-foreground">Nenhum fornecedor ou cliente encontrado.</TableCell></TableRow>
+            <TableRow v-if="!pessoas.length"><TableCell colspan="5" class="text-muted-foreground">Nenhum cadastro encontrado.</TableCell></TableRow>
           </TableBody>
         </Table>
       </div>
@@ -352,8 +352,8 @@ const SEL = 'px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foregr
   <Dialog v-model:open="pessoaAberta">
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
-        <DialogTitle>{{ pessoaEditando ? 'Editar cadastro' : 'Novo fornecedor ou cliente' }}</DialogTitle>
-        <DialogDescription>Casas agropecuárias, vendedores e compradores de gado, transportadores...</DialogDescription>
+        <DialogTitle>{{ pessoaEditando ? 'Editar cadastro' : 'Novo cadastro' }}</DialogTitle>
+        <DialogDescription>Casas agropecuárias, vendedores e compradores de gado, transportadores, investidores e sócios...</DialogDescription>
       </DialogHeader>
       <AlertaErros :mensagens="mensagens" />
       <form id="form-pessoa" class="grid gap-4 sm:grid-cols-2" @submit.prevent="salvarPessoa">

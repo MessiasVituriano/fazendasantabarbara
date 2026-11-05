@@ -132,6 +132,8 @@ e da previsão de caixa) e **pagamento** (quando o dinheiro de fato entrou/saiu:
 | POST | `/api/financeiro/lancamentos/{id}/baixa`, `/baixa-em-lote`, `/{id}/estorno`, `/{id}/cancelamento` | Baixa em lote é tudo ou nada; cancelamento aceita `parcelas_seguintes` |
 | GET | `/api/financeiro/lancamentos/{id}/historico` | Trilha de auditoria |
 | POST/GET/DELETE | `/api/financeiro/lancamentos/{id}/anexos`, `/api/financeiro/anexos/{id}` | Comprovantes (PDF/imagem/planilha, até 10 MB) |
+| GET/POST | `/api/financeiro/aportes-retiradas` | Aportes e retiradas de investidores (pessoa do tipo `INVESTIDOR`): alteram o saldo das contas e o fluxo de caixa, mas não são receita nem despesa. Filtros: `tipo`, `pessoa_id`, `inicio`, `fim`; `meta.investidores` traz a posição acumulada de cada investidor |
+| POST | `/api/financeiro/aportes-retiradas/{id}/cancelamento` | Exige `motivo`; o registro continua na lista como cancelado |
 | GET/POST/PATCH | `/api/financeiro/contas`, `/api/financeiro/categorias`, `/api/pessoas`, `/api/lotes` | Cadastros; `GET /api/lotes/{id}` traz `custos` (aquisição × operacional × total, por grupo e por mês) |
 
 ### Fotos dos animais

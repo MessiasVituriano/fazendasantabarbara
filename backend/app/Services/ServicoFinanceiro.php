@@ -4,10 +4,13 @@ namespace App\Services;
 
 use App\Enums\SituacaoLancamento;
 use App\Enums\TipoLancamento;
+use App\Enums\TipoPessoa;
 use App\Exceptions\RegraNegocioException;
 use App\Models\CategoriaFinanceira;
 use App\Models\ContaFinanceira;
 use App\Models\Lancamento;
+use App\Models\MovimentoCapital;
+use App\Models\Pessoa;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -189,6 +192,34 @@ class ServicoFinanceiro
         }));
     }
 
+    /** Registra um aporte ou retirada de investidor: o dinheiro já entrou ou saiu da conta. */
+    public function registrarMovimentoCapital(array $dados): MovimentoCapital
+    {
+        $investidor = Pessoa::findOrFail($dados['pessoa_id']);
+        if ($investidor->tipo !== TipoPessoa::INVESTIDOR) {
+            throw new RegraNegocioException("\"{$investidor->nome}\" não está cadastrado como investidor.", 'PESSOA_NAO_INVESTIDORA', 422, '/pessoa_id');
+        }
+        if (! $investidor->ativo) {
+            throw new RegraNegocioException("O investidor \"{$investidor->nome}\" está inativo.", 'INVESTIDOR_INATIVO', 422, '/pessoa_id');
+        }
+        $this->validarPagamento($dados['conta_financeira_id'], $dados['data_movimento'], '/data_movimento');
+
+        return MovimentoCapital::create([...$dados, 'criado_por' => Auth::id(), 'atualizado_por' => Auth::id()]);
+    }
+
+    /** Cancela o aporte ou retirada: sai do saldo e dos totais, mas continua consultável. */
+    public function cancelarMovimentoCapital(MovimentoCapital $movimento, string $motivo): MovimentoCapital
+    {
+        if ($movimento->cancelado_em) {
+            throw new RegraNegocioException('Este movimento já está cancelado.', 'MOVIMENTO_CANCELADO', 409);
+        }
+
+        $movimento->acaoAuditoria = 'CANCELAMENTO';
+        $movimento->update(['cancelado_em' => now(), 'motivo_cancelamento' => $motivo, 'atualizado_por' => Auth::id()]);
+
+        return $movimento;
+    }
+
     private function categoriaValida(int $id, string $tipo, bool $aceitaInativa = false): CategoriaFinanceira
     {
         $categoria = CategoriaFinanceira::findOrFail($id);
@@ -214,7 +245,7 @@ class ServicoFinanceiro
         return $dados['grupo_custo'] ?? $categoria->grupo_custo?->value;
     }
 
-    private function validarPagamento(?int $contaId, string $data): void
+    private function validarPagamento(?int $contaId, string $data, string $campoData = '/data_pagamento'): void
     {
         $conta = $contaId ? ContaFinanceira::find($contaId) : null;
         if (! $conta) {
@@ -225,8 +256,8 @@ class ServicoFinanceiro
         }
         if (Carbon::parse($data)->lt($conta->data_saldo_inicial)) {
             throw new RegraNegocioException(
-                "A conta \"{$conta->nome}\" tem saldo inicial em {$conta->data_saldo_inicial->format('d/m/Y')}. O pagamento não pode ser anterior a essa data.",
-                'PAGAMENTO_ANTES_DO_SALDO_INICIAL', 422, '/data_pagamento',
+                "A conta \"{$conta->nome}\" tem saldo inicial em {$conta->data_saldo_inicial->format('d/m/Y')}. A movimentação não pode ser anterior a essa data.",
+                'PAGAMENTO_ANTES_DO_SALDO_INICIAL', 422, $campoData,
             );
         }
     }
