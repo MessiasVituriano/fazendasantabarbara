@@ -67,7 +67,8 @@ Após alterar o `.env` em produção com `config:cache`, rode `php artisan confi
 | GET | `/api/painel/leite/comparativo?inicio=&fim=` | Comparativo por vaca em intervalo livre (máx. 1 ano) |
 | GET/POST | `/api/pesagens` | RF01 — lote; GET traz `gmd_kg_dia` (RF03) |
 | GET/POST | `/api/eventos-reprodutivos` | RF01 + RF02 — lote, automações de status |
-| GET/POST/DELETE | `/api/vacinas` | `data_fim_carencia` calculada automaticamente |
+| GET/POST/DELETE | `/api/vacinas` | Vacinas e medicamentos aplicados. POST exige `tipo` e `dias_carencia_leite_carne`, com `produto_sanitario_id` ou `nome_vacina` (campo livre) e `categoria_sanitaria_id` opcional. GET filtra por `animal_id`, `tipo`, `categoria_sanitaria_id`, `vigentes`, `busca`. `data_fim_carencia` calculada automaticamente |
+| GET/POST/PATCH | `/api/sanidade/categorias`, `/api/sanidade/produtos` | Categorias e produtos com carência sugerida (o produto prevalece sobre a categoria). Consulta para todos; alteração só do gestor. Não são excluídos, são desativados |
 | GET | `/api/manejo/ordenha`, `/api/manejo/abate` | RF04 — `alerta.nivel = CRITICO`; `?ocultar_em_carencia=1` omite |
 | GET/POST | `/api/animais/{id}/fotos` | Galeria; POST multipart com `foto` (+ `legenda`, `principal`, `data_registro`) |
 | PATCH/DELETE | `/api/animais/{id}/fotos/{foto}` | `{principal: true}` / `{legenda}`; excluir a principal promove a mais recente |

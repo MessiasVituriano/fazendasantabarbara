@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AnexoLancamentoController;
 use App\Http\Controllers\Api\AnimalController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoriaFinanceiraController;
+use App\Http\Controllers\Api\CategoriaSanitariaController;
 use App\Http\Controllers\Api\ContaFinanceiraController;
 use App\Http\Controllers\Api\EventoReprodutivoController;
 use App\Http\Controllers\Api\FinanceiroController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Api\PessoaController;
 use App\Http\Controllers\Api\PesagemController;
 use App\Http\Controllers\Api\PiqueteController;
 use App\Http\Controllers\Api\ProducaoLeiteController;
+use App\Http\Controllers\Api\ProdutoSanitarioController;
 use App\Http\Controllers\Api\TimelineAnimalController;
 use App\Http\Controllers\Api\UsuarioController;
 use App\Http\Controllers\Api\VacinaController;
@@ -51,6 +53,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('pesagens', PesagemController::class)->only(['index', 'store']);
     Route::apiResource('eventos-reprodutivos', EventoReprodutivoController::class)->only(['index', 'store']);
     Route::apiResource('vacinas', VacinaController::class)->only(['index', 'store']);
+    Route::get('sanidade/categorias', [CategoriaSanitariaController::class, 'index'])->name('sanidade.categorias.index');
+    Route::get('sanidade/produtos', [ProdutoSanitarioController::class, 'index'])->name('sanidade.produtos.index');
 
     Route::get('piquetes', [PiqueteController::class, 'index'])->name('piquetes.index');
     Route::get('piquetes/{piquete}', [PiqueteController::class, 'show'])->name('piquetes.show');
@@ -72,6 +76,10 @@ Route::middleware('auth:sanctum')->group(function () {
             ->scoped(['foto' => 'id']);
 
         Route::delete('vacinas/{vacina}', [VacinaController::class, 'destroy'])->name('vacinas.destroy');
+        Route::post('sanidade/categorias', [CategoriaSanitariaController::class, 'store'])->name('sanidade.categorias.store');
+        Route::patch('sanidade/categorias/{categoria}', [CategoriaSanitariaController::class, 'update'])->name('sanidade.categorias.update');
+        Route::post('sanidade/produtos', [ProdutoSanitarioController::class, 'store'])->name('sanidade.produtos.store');
+        Route::patch('sanidade/produtos/{produto}', [ProdutoSanitarioController::class, 'update'])->name('sanidade.produtos.update');
 
         Route::post('piquetes', [PiqueteController::class, 'store'])->name('piquetes.store');
         Route::match(['put', 'patch'], 'piquetes/{piquete}', [PiqueteController::class, 'update'])->name('piquetes.update');

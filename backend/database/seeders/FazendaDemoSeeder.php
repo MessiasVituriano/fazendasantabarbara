@@ -11,6 +11,8 @@ use App\Models\Animal;
 use App\Models\Pesagem;
 use App\Models\Piquete;
 use App\Models\ProducaoLeite;
+use App\Models\CategoriaSanitaria;
+use App\Models\ProdutoSanitario;
 use App\Models\VacinaSanidade;
 use App\Services\ServicoReprodutivo;
 use Illuminate\Database\Seeder;
@@ -61,8 +63,8 @@ class FazendaDemoSeeder extends Seeder
         $reprodutivo->registrar(['animal_id' => $vacas[2]->id, 'tipo_evento' => 'TOQUE_POSITIVO', 'data_evento' => $hoje->copy()->subDays(110)->toDateString()]);
 
         // Vacina com carência vigente (aparece com alerta crítico na ordenha).
-        VacinaSanidade::create(['animal_id' => $vacas[3]->id, 'nome_vacina' => 'Antibiótico (mastite)', 'data_aplicacao' => $hoje->copy()->subDays(4), 'dias_carencia_leite_carne' => 7]);
-        VacinaSanidade::create(['animal_id' => $vacas[4]->id, 'nome_vacina' => 'Aftosa', 'data_aplicacao' => $hoje->copy()->subDays(60), 'dias_carencia_leite_carne' => 0]);
+        VacinaSanidade::create(['animal_id' => $vacas[3]->id, 'tipo' => 'MEDICAMENTO', 'categoria_sanitaria_id' => CategoriaSanitaria::porChave('mastite')->id, 'nome_vacina' => 'Antibiótico (mastite)', 'data_aplicacao' => $hoje->copy()->subDays(4), 'dias_carencia_leite_carne' => 7]);
+        VacinaSanidade::create(['animal_id' => $vacas[4]->id, 'tipo' => 'VACINA', 'categoria_sanitaria_id' => CategoriaSanitaria::porChave('aftosa')->id, 'nome_vacina' => 'Aftosa', 'data_aplicacao' => $hoje->copy()->subDays(60), 'dias_carencia_leite_carne' => 0]);
 
         // Gado de corte com pesagens mensais (GMD).
         $bois = Animal::factory()->boiGordo()->count(6)->sequence(fn ($s) => ['brinco' => sprintf('C-%03d', $s->index + 1)])->create();
@@ -78,7 +80,8 @@ class FazendaDemoSeeder extends Seeder
                 $peso += fake()->randomFloat(2, 18, 33); // ~0,6 a 1,1 kg/dia
             }
         }
-        VacinaSanidade::create(['animal_id' => $bois[0]->id, 'nome_vacina' => 'Ivermectina', 'data_aplicacao' => $hoje->copy()->subDays(10), 'dias_carencia_leite_carne' => 35]);
+        $ivermectina = ProdutoSanitario::create(['categoria_sanitaria_id' => CategoriaSanitaria::porChave('antiparasitario')->id, 'nome' => 'Ivermectina 1%', 'dias_carencia' => 35]);
+        VacinaSanidade::create(['animal_id' => $bois[0]->id, 'tipo' => 'MEDICAMENTO', 'categoria_sanitaria_id' => $ivermectina->categoria_sanitaria_id, 'produto_sanitario_id' => $ivermectina->id, 'nome_vacina' => $ivermectina->nome, 'data_aplicacao' => $hoje->copy()->subDays(10), 'dias_carencia_leite_carne' => 35]);
 
         // Bezerros: um pronto para desmame (rotina diária), outro novo.
         Animal::factory()->bezerro(Sexo::M, 215)->create(['brinco' => 'B-001', 'aptidao' => Aptidao::CORTE, 'nome' => null]);

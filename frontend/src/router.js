@@ -12,6 +12,7 @@ const router = createRouter({
     { path: '/animais/:id', name: 'animal', component: () => import('./views/AnimalView.vue'), props: true },
     { path: '/ordenha', name: 'ordenha', component: () => import('./views/OrdenhaView.vue') },
     { path: '/pesagens', name: 'pesagens', component: () => import('./views/PesagensView.vue') },
+    { path: '/sanidade', name: 'sanidade', component: () => import('./views/SanidadeView.vue') },
     { path: '/abate', name: 'abate', component: () => import('./views/AbateView.vue'), meta: SO_GESTOR },
     { path: '/piquetes', name: 'piquetes', component: () => import('./views/PiquetesView.vue') },
     { path: '/perfil', name: 'perfil', component: () => import('./views/PerfilView.vue') },

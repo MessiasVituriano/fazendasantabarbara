@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\Data;
+use App\Enums\TipoProdutoSanitario;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,11 +16,12 @@ class VacinaSanidade extends Model
 
     protected $table = 'vacinas_sanidade';
 
-    protected $fillable = ['animal_id', 'nome_vacina', 'data_aplicacao', 'dias_carencia_leite_carne'];
+    protected $fillable = ['animal_id', 'tipo', 'categoria_sanitaria_id', 'produto_sanitario_id', 'nome_vacina', 'data_aplicacao', 'dias_carencia_leite_carne'];
 
     protected function casts(): array
     {
         return [
+            'tipo' => TipoProdutoSanitario::class,
             'data_aplicacao' => Data::class,
             'data_fim_carencia' => Data::class,
             'dias_carencia_leite_carne' => 'integer',
@@ -38,6 +40,16 @@ class VacinaSanidade extends Model
     public function animal(): BelongsTo
     {
         return $this->belongsTo(Animal::class);
+    }
+
+    public function categoria(): BelongsTo
+    {
+        return $this->belongsTo(CategoriaSanitaria::class, 'categoria_sanitaria_id');
+    }
+
+    public function produto(): BelongsTo
+    {
+        return $this->belongsTo(ProdutoSanitario::class, 'produto_sanitario_id');
     }
 
     /** Carência vigente: data_aplicacao + dias_carencia >= hoje (RF04). */

@@ -32,6 +32,7 @@ class OpcoesController extends Controller
             'grupo_custo' => $opcoes(Enums\GrupoCusto::class),
             'tipo_conta_financeira' => $opcoes(Enums\TipoContaFinanceira::class),
             'tipo_pessoa' => $opcoes(Enums\TipoPessoa::class),
+            'tipo_produto_sanitario' => $opcoes(Enums\TipoProdutoSanitario::class),
             'pecuaria' => config('pecuaria'),
         ]]);
     }

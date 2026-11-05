@@ -88,7 +88,7 @@ class TimelineAnimalController extends Controller
         return $animal->vacinas()->get()->map(fn ($v) => [
             'tipo' => 'VACINA',
             'data' => $v->data_aplicacao->toDateString(),
-            'titulo' => "Vacina: {$v->nome_vacina}",
+            'titulo' => ($v->tipo?->label() ?? 'Aplicação').": {$v->nome_vacina}",
             'descricao' => $v->dias_carencia_leite_carne > 0
                 ? "Carência de {$v->dias_carencia_leite_carne} dias (até {$v->data_fim_carencia->format('d/m/Y')})"
                 : 'Sem carência',

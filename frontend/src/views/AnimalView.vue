@@ -13,6 +13,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import http from '../api/http'
 import AlertaErros from '../components/AlertaErros.vue'
 import AvatarAnimal from '../components/AvatarAnimal.vue'
+import FormAplicacaoSanitaria from '../components/FormAplicacaoSanitaria.vue'
 import FormEventoReprodutivo from '../components/FormEventoReprodutivo.vue'
 import GaleriaFotos from '../components/GaleriaFotos.vue'
 import LinhaDoTempo from '../components/LinhaDoTempo.vue'
@@ -60,8 +61,8 @@ const projecoes = computed(() => animal.value && [
 
 // Lançamentos rápidos
 const modal = ref(null)
-const TITULOS = { evento: 'Novo evento reprodutivo', pesagem: 'Nova pesagem', producao: 'Produção de leite', vacina: 'Aplicação de vacina' }
-const rapido = reactive({ data: hoje(), peso_kg: '', periodo: turnoAtual(), quantidade_litros: '', nome_vacina: '', dias_carencia_leite_carne: 0 })
+const TITULOS = { evento: 'Novo evento reprodutivo', pesagem: 'Nova pesagem', producao: 'Produção de leite', vacina: 'Vacina ou medicamento' }
+const rapido = reactive({ data: hoje(), peso_kg: '', periodo: turnoAtual(), quantidade_litros: '' })
 const { enviando, mensagens, campos, enviar } = useEnvio()
 const erro = (campo) => campos.value[`registros.0.${campo}`] ?? campos.value[campo]
 
@@ -77,7 +78,6 @@ async function salvarRapido() {
   const req = {
     pesagem: () => http.post('/pesagens', { uuid: novoUuid(), animal_id, data_pesagem: rapido.data, peso_kg: decimal(rapido.peso_kg) }),
     producao: () => http.put('/producoes-leite/turno', { data_pesagem: rapido.data, periodo: rapido.periodo, registros: [{ animal_id, quantidade_litros: decimal(rapido.quantidade_litros) }] }),
-    vacina: () => http.post('/vacinas', { animal_id, data_aplicacao: rapido.data, nome_vacina: rapido.nome_vacina, dias_carencia_leite_carne: rapido.dias_carencia_leite_carne }),
   }
   try {
     await enviar(req[modal.value])
@@ -88,6 +88,11 @@ async function salvarRapido() {
 }
 function eventoSalvo() {
   toast.success('Evento reprodutivo registrado')
+  modal.value = null
+  carregar()
+}
+function aplicacaoSalva() {
+  toast.success('Aplicação registrada')
   modal.value = null
   carregar()
 }
@@ -102,7 +107,7 @@ function eventoSalvo() {
       <Button v-if="femea" @click="abrir('evento')"><HeartPulse /> Evento</Button>
       <Button variant="outline" @click="abrir('pesagem')"><Scale /> Pesagem</Button>
       <Button v-if="femea" variant="outline" @click="abrir('producao')"><Milk /> Produção</Button>
-      <Button variant="outline" @click="abrir('vacina')"><Syringe /> Vacina</Button>
+      <Button variant="outline" @click="abrir('vacina')"><Syringe /> Vacina/medicamento</Button>
     </template>
   </CabecalhoPagina>
 
@@ -172,6 +177,8 @@ function eventoSalvo() {
 
       <FormEventoReprodutivo v-if="modal === 'evento'" :animal-id="animal.id" @salvo="eventoSalvo" @cancelar="modal = null" />
 
+      <FormAplicacaoSanitaria v-else-if="modal === 'vacina'" :animal-id="animal.id" @salvo="aplicacaoSalva" @cancelar="modal = null" />
+
       <form v-else id="form-rapido" class="grid gap-4" @submit.prevent="salvarRapido">
         <AlertaErros :mensagens="Object.keys(campos).length ? [] : mensagens" />
         <div class="grid gap-4 sm:grid-cols-2">
@@ -196,20 +203,10 @@ function eventoSalvo() {
             <Input id="litros" v-model="rapido.quantidade_litros" inputmode="decimal" required :aria-invalid="!!erro('quantidade_litros')" />
             <p class="text-xs text-muted-foreground">Se já houver lançamento neste turno, o valor é corrigido.</p>
           </div>
-          <template v-if="modal === 'vacina'">
-            <div class="grid gap-1.5">
-              <Label for="vacina">Vacina / medicamento</Label>
-              <Input id="vacina" v-model.trim="rapido.nome_vacina" required />
-            </div>
-            <div class="grid gap-1.5">
-              <Label for="carencia">Carência leite/carne (dias)</Label>
-              <Input id="carencia" v-model.number="rapido.dias_carencia_leite_carne" type="number" min="0" required />
-            </div>
-          </template>
         </div>
       </form>
 
-      <DialogFooter v-if="modal !== 'evento'">
+      <DialogFooter v-if="modal !== 'evento' && modal !== 'vacina'">
         <Button variant="ghost" @click="modal = null">Cancelar</Button>
         <Button type="submit" form="form-rapido" :disabled="enviando">Salvar</Button>
       </DialogFooter>
