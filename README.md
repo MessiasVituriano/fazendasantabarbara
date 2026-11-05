@@ -26,6 +26,35 @@ Sem PostgreSQL local, dá para testar com SQLite:
 
 Testes: `cd backend && php artisan test` (SQLite em memória).
 
+## Deploy (Digital Ocean)
+
+Um droplet com Docker roda dois containers: `app` (Nginx, PHP-FPM, painel Vue e agendador do desmame) e `db` (PostgreSQL 16).
+Fotos, comprovantes e logs ficam no volume `storage-data`, e o banco no volume `pgdata`.
+
+Primeira instalação, no droplet:
+
+```bash
+git clone https://github.com/MessiasVituriano/fazendasantabarbara.git
+cd fazendasantabarbara
+./deploy.sh
+nano .env
+./deploy.sh
+docker compose -f docker-compose.prod.yml exec -u www-data app php artisan pecuaria:criar-gestor admin --nome="Fulano"
+```
+
+A primeira execução cria o `.env` com `APP_KEY` e `DB_PASSWORD` gerados; só falta ajustar `APP_URL`. Se outro projeto
+já usar a porta 80 no droplet, troque `APP_PORT` e inclua a porta no `APP_URL`.
+
+Atualizações, no droplet:
+
+```bash
+cd fazendasantabarbara
+git pull
+./deploy.sh
+```
+
+O script para com erro se a aplicação não subir.
+
 ## Usuários e perfis
 
 | Perfil | Acesso |

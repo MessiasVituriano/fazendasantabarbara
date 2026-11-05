@@ -2,7 +2,9 @@ export const dataBr = (iso) => (iso ? iso.slice(0, 10).split('-').reverse().join
 export const hoje = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)
 export const numero = (v, casas = 2) =>
   v == null ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })
-export const novoUuid = () => crypto.randomUUID()
+// crypto.randomUUID só existe em HTTPS ou localhost; acessando por http://IP, monta o UUID v4 manualmente.
+export const novoUuid = () => crypto.randomUUID?.()
+  ?? '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16))
 
 /** Idade legível a partir da data de nascimento: "18 dias", "7 meses", "2 anos e 3 meses". */
 export function idade(nascimento) {

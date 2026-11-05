@@ -1,0 +1,67 @@
+name: fazenda
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fazenda-app:prod
+    container_name: fazenda-app-prod
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT:-80}:80"
+    volumes:
+      - ./.env:/var/www/.env:ro
+      # Fotos, comprovantes e logs: precisam sobreviver a cada deploy.
+      - storage-data:/var/www/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1/up > /dev/null"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # Tempo para as migrations terminarem no entrypoint.
+      start_period: 60s
+      start_interval: 3s
+    networks:
+      - fazenda-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  db:
+    image: postgres:16-alpine
+    container_name: fazenda-db-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fazenda-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+networks:
+  fazenda-network:
+    driver: bridge
+
+volumes:
+  pgdata:
+    driver: local
+  storage-data:
+    driver: local
