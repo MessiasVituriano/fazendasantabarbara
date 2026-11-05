@@ -40,10 +40,14 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
+# Dependencias antes do codigo: o vendor so e reinstalado quando o composer.lock muda.
+COPY backend/composer.json backend/composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction
+
 COPY backend/ ./
 COPY --from=frontend /app/dist ./spa
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer dump-autoload --no-dev --optimize --no-interaction
 
 RUN mkdir -p storage/app/private storage/app/public storage/framework/cache/data \
         storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \

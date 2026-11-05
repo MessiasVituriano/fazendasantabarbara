@@ -37,6 +37,8 @@ docker compose -f "$COMPOSE_FILE" up -d --force-recreate --wait --wait-timeout 1
 
 echo "==> Limpando imagens antigas..."
 docker image prune -f
+# Roda depois do build: o que este deploy usou fica em cache; o que esta parado ha 3 dias sai.
+docker builder prune -f --filter until=72h
 
 echo "==> Status dos containers:"
 docker compose -f "$COMPOSE_FILE" ps
