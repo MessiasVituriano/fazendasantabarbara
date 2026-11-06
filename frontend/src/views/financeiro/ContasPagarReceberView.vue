@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { CircleCheck, Plus } from '@lucide/vue'
+import { Ban, CircleCheck, Pencil, Plus } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -9,6 +9,7 @@ import http from '../../api/http'
 import AlertaErros from '../../components/AlertaErros.vue'
 import DetalheLancamento from '../../components/financeiro/DetalheLancamento.vue'
 import DialogoBaixa from '../../components/financeiro/DialogoBaixa.vue'
+import DialogoCancelamento from '../../components/financeiro/DialogoCancelamento.vue'
 import FormLancamento from '../../components/financeiro/FormLancamento.vue'
 import SeloSituacao from '../../components/financeiro/SeloSituacao.vue'
 import CabecalhoPagina from '../../components/layout/CabecalhoPagina.vue'
@@ -34,7 +35,6 @@ const mais = (n) => { const d = new Date(`${hoje()}T12:00:00`); d.setDate(d.getD
 
 async function carregar() {
   carregando.value = true
-  selecionados.value = []
   try {
     const params = visao.value === 'aberto'
       ? { tipo: tipo.value, situacao: ['EM_ABERTO'], base: 'vencimento', ordem: 'asc', por_pagina: 500 }
@@ -42,10 +42,12 @@ async function carregar() {
     const [r, l] = await Promise.all([http.get('/financeiro/resumo'), http.get('/financeiro/lancamentos', { params })])
     resumo.value = r.data.data
     itens.value = l.data.data
+    // Mantém a seleção ao editar (o total é refeito com o valor novo); o que foi pago ou cancelado sai dela.
+    selecionados.value = selecionados.value.filter((id) => itens.value.some((i) => i.id === id))
     erros.value = []
   } catch (e) { erros.value = e.mensagens } finally { carregando.value = false }
 }
-watch([tipo, visao], carregar, { immediate: true })
+watch([tipo, visao], () => { selecionados.value = []; carregar() }, { immediate: true })
 
 const agenda = computed(() => resumo.value?.[tipo.value === 'RECEITA' ? 'a_receber' : 'a_pagar'])
 const ehReceita = computed(() => tipo.value === 'RECEITA')
@@ -86,7 +88,18 @@ function baixar(lista) {
   paraBaixar.value = lista
   baixaAberta.value = true
 }
-const novoAberto = ref(false)
+const formAberto = ref(false)
+const emEdicao = ref(null)
+function abrirForm(lancamento = null) {
+  emEdicao.value = lancamento
+  formAberto.value = true
+}
+const cancelamentoAberto = ref(false)
+const paraCancelar = ref(null)
+function cancelar(lancamento) {
+  paraCancelar.value = lancamento
+  cancelamentoAberto.value = true
+}
 const detalheId = ref(null)
 const totalPagos = computed(() => itens.value.reduce((s, l) => s + Number(l.valor_pago ?? 0), 0))
 </script>
@@ -94,7 +107,7 @@ const totalPagos = computed(() => itens.value.reduce((s, l) => s + Number(l.valo
 <template>
   <CabecalhoPagina titulo="Contas a pagar e receber">
     <template #acoes>
-      <Button @click="novoAberto = true"><Plus /> {{ ehReceita ? 'Nova conta a receber' : 'Nova conta a pagar' }}</Button>
+      <Button @click="abrirForm()"><Plus /> {{ ehReceita ? 'Nova conta a receber' : 'Nova conta a pagar' }}</Button>
     </template>
     <template #filtros>
       <ToggleGroup v-model="tipo" type="single" variant="outline" size="sm" aria-label="Tipo" @update:model-value="(v) => !v && (tipo = 'DESPESA')">
@@ -159,6 +172,8 @@ const totalPagos = computed(() => itens.value.reduce((s, l) => s + Number(l.valo
               </p>
             </button>
             <span class="hidden text-right font-semibold tabular-nums sm:block">{{ moeda(l.valor) }}</span>
+            <Button size="icon-sm" variant="ghost" class="shrink-0" title="Editar" :aria-label="`Editar ${l.descricao}`" @click="abrirForm(l)"><Pencil /></Button>
+            <Button size="icon-sm" variant="ghost" class="hidden shrink-0 text-destructive sm:inline-flex" title="Cancelar" :aria-label="`Cancelar ${l.descricao}`" @click="cancelar(l)"><Ban /></Button>
             <Button size="sm" variant="outline" @click="baixar([l])">
               <CircleCheck /> <span class="hidden md:inline">{{ ehReceita ? 'Receber' : 'Pagar' }}</span>
               <span class="tabular-nums sm:hidden">{{ moeda(l.valor) }}</span>
@@ -175,17 +190,20 @@ const totalPagos = computed(() => itens.value.reduce((s, l) => s + Number(l.valo
     <template v-else>
       <p class="text-sm text-muted-foreground">{{ itens.length }} lançamento(s) · {{ moeda(totalPagos) }} {{ ehReceita ? 'recebidos' : 'pagos' }} nos últimos 30 dias</p>
       <Card class="gap-0 divide-y py-0">
-        <button v-for="l in itens" :key="l.id" class="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-accent/50" @click="detalheId = l.id">
-          <div class="min-w-0 flex-1">
-            <p class="truncate font-medium">{{ l.descricao }}</p>
-            <p class="truncate text-xs text-muted-foreground">
-              {{ ehReceita ? 'Recebido' : 'Pago' }} em {{ dataBr(l.data_pagamento) }} · {{ l.conta }}<template v-if="l.forma_pagamento_label"> · {{ l.forma_pagamento_label }}</template>
-              <template v-if="l.pessoa"> · {{ l.pessoa }}</template>
-            </p>
-          </div>
-          <SeloSituacao class="hidden sm:inline-flex" :situacao="l.situacao" :tipo="l.tipo" />
-          <span class="font-semibold tabular-nums">{{ moeda(l.valor_pago) }}</span>
-        </button>
+        <div v-for="l in itens" :key="l.id" class="flex items-center gap-3 px-4 py-3 hover:bg-accent/50">
+          <button class="flex min-w-0 flex-1 items-center gap-3 text-left" @click="detalheId = l.id">
+            <div class="min-w-0 flex-1">
+              <p class="truncate font-medium">{{ l.descricao }}</p>
+              <p class="truncate text-xs text-muted-foreground">
+                {{ ehReceita ? 'Recebido' : 'Pago' }} em {{ dataBr(l.data_pagamento) }} · {{ l.conta }}<template v-if="l.forma_pagamento_label"> · {{ l.forma_pagamento_label }}</template>
+                <template v-if="l.pessoa"> · {{ l.pessoa }}</template>
+              </p>
+            </div>
+            <SeloSituacao class="hidden sm:inline-flex" :situacao="l.situacao" :tipo="l.tipo" />
+            <span class="font-semibold tabular-nums">{{ moeda(l.valor_pago) }}</span>
+          </button>
+          <Button size="icon-sm" variant="ghost" class="shrink-0" title="Editar" :aria-label="`Editar ${l.descricao}`" @click="abrirForm(l)"><Pencil /></Button>
+        </div>
         <p v-if="!itens.length && !carregando" class="px-4 py-10 text-center text-sm text-muted-foreground">Nada {{ ehReceita ? 'recebido' : 'pago' }} nos últimos 30 dias.</p>
       </Card>
     </template>
@@ -201,6 +219,7 @@ const totalPagos = computed(() => itens.value.reduce((s, l) => s + Number(l.valo
   </div>
 
   <DialogoBaixa v-model:open="baixaAberta" :lancamentos="paraBaixar" @baixado="carregar" />
-  <FormLancamento v-model:open="novoAberto" :padrao="{ tipo, data_vencimento: hoje() }" @salvo="carregar" />
+  <DialogoCancelamento v-model:open="cancelamentoAberto" :lancamento="paraCancelar" @cancelado="carregar" />
+  <FormLancamento v-model:open="formAberto" :lancamento="emEdicao" :padrao="{ tipo, data_vencimento: hoje() }" @salvo="carregar" />
   <DetalheLancamento :id="detalheId" @fechar="detalheId = null" @alterado="carregar" />
 </template>

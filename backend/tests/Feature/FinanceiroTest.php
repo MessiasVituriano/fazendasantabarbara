@@ -162,6 +162,21 @@ class FinanceiroTest extends TestCase
         $this->assertSame('Pago na conta errada', $estorno['depois']['motivo']);
     }
 
+    public function test_editar_conta_em_aberto_recalcula_agenda_e_totais(): void
+    {
+        $l = $this->lancar(['valor' => 600, 'data_vencimento' => '2026-11-08'])[0];
+        $this->lancar(['valor' => 1500, 'data_vencimento' => '2026-12-01']);
+
+        $this->patchJson("/api/financeiro/lancamentos/{$l['id']}", ['valor' => '750,50', 'data_vencimento' => '2026-11-20'])->assertOk()
+            ->assertJsonPath('data.valor', '750.50');
+
+        $agenda = $this->getJson('/api/financeiro/resumo')->assertOk()->json('data.a_pagar');
+        $this->assertEquals(0, $agenda['proximos_7_dias']['valor']);
+        $this->assertEquals(2250.5, $agenda['proximos_30_dias']['valor'] + $agenda['depois']['valor']);
+        $this->assertEquals(2250.5, $agenda['total']['valor']);
+        $this->assertEquals(2250.5, $this->getJson('/api/financeiro/lancamentos')->json('meta.totais.despesas'));
+    }
+
     public function test_cancelamento_tira_dos_totais_e_cancela_parcelas_seguintes(): void
     {
         $p = $this->lancar(['valor' => 300, 'parcelas' => 3]);

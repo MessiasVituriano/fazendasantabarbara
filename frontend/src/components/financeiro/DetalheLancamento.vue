@@ -13,6 +13,7 @@ import { useEnvio } from '../../composables/useEnvio'
 import { dataBr, moeda } from '../../formatos'
 import AlertaErros from '../AlertaErros.vue'
 import DialogoBaixa from './DialogoBaixa.vue'
+import DialogoCancelamento from './DialogoCancelamento.vue'
 import FormLancamento from './FormLancamento.vue'
 import SeloSituacao from './SeloSituacao.vue'
 
@@ -63,19 +64,6 @@ async function estornar() {
 
 // Cancelamento
 const cancelarAberto = ref(false)
-const motivoCancelamento = ref('')
-const parcelasSeguintes = ref(false)
-async function cancelar() {
-  try {
-    const { data } = await enviar(() => http.post(`/financeiro/lancamentos/${l.value.id}/cancelamento`, {
-      motivo: motivoCancelamento.value, parcelas_seguintes: parcelasSeguintes.value,
-    }))
-    toast.success(data.data.length > 1 ? `${data.data.length} parcelas canceladas` : 'Lançamento cancelado')
-    cancelarAberto.value = false
-    motivoCancelamento.value = ''
-    alterou()
-  } catch { /* exibido no diálogo */ }
-}
 
 // Anexos
 const entrada = ref(null)
@@ -246,25 +234,5 @@ const mudancas = (h) => {
     </DialogContent>
   </Dialog>
 
-  <Dialog v-model:open="cancelarAberto">
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Cancelar lançamento</DialogTitle>
-        <DialogDescription>Cancelados saem de todos os totais, mas continuam consultáveis no histórico.</DialogDescription>
-      </DialogHeader>
-      <AlertaErros :mensagens="mensagens" />
-      <div class="grid gap-1.5">
-        <Label for="m-canc">Motivo</Label>
-        <Input id="m-canc" v-model="motivoCancelamento" maxlength="255" required placeholder="Ex.: lançado em duplicidade" />
-      </div>
-      <label v-if="l?.total_parcelas && l.parcela < l.total_parcelas" class="flex items-center gap-2 text-sm">
-        <input v-model="parcelasSeguintes" type="checkbox" class="size-4 accent-primary" />
-        Cancelar também as parcelas seguintes em aberto
-      </label>
-      <DialogFooter>
-        <Button variant="ghost" @click="cancelarAberto = false">Voltar</Button>
-        <Button variant="destructive" :disabled="enviando || !motivoCancelamento.trim()" @click="cancelar">Cancelar lançamento</Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+  <DialogoCancelamento v-model:open="cancelarAberto" :lancamento="l" @cancelado="alterou" />
 </template>

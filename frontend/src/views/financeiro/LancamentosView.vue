@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { watchDebounced } from '@vueuse/core'
-import { ChevronLeft, ChevronRight, Download, Paperclip, Plus, Search, SlidersHorizontal } from '@lucide/vue'
+import { Ban, ChevronLeft, ChevronRight, Download, Paperclip, Pencil, Plus, Search, SlidersHorizontal } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import http from '../../api/http'
 import AlertaErros from '../../components/AlertaErros.vue'
 import DetalheLancamento from '../../components/financeiro/DetalheLancamento.vue'
+import DialogoCancelamento from '../../components/financeiro/DialogoCancelamento.vue'
 import FormLancamento from '../../components/financeiro/FormLancamento.vue'
 import SeloSituacao from '../../components/financeiro/SeloSituacao.vue'
 import ValorTipo from '../../components/financeiro/ValorTipo.vue'
@@ -118,7 +119,18 @@ const filtrosAtivos = computed(() => {
 const totais = computed(() => meta.value?.totais)
 const ultimaPagina = computed(() => meta.value?.last_page ?? 1)
 
-const novoAberto = ref(false)
+const formAberto = ref(false)
+const emEdicao = ref(null)
+function abrirForm(lancamento = null) {
+  emEdicao.value = lancamento
+  formAberto.value = true
+}
+const cancelamentoAberto = ref(false)
+const paraCancelar = ref(null)
+function cancelar(lancamento) {
+  paraCancelar.value = lancamento
+  cancelamentoAberto.value = true
+}
 const detalheId = ref(null)
 const padraoNovo = computed(() => ({
   ...(filtros.value.tipo !== TODOS ? { tipo: filtros.value.tipo } : {}),
@@ -157,7 +169,7 @@ async function exportar() {
   <CabecalhoPagina titulo="Lançamentos" :contador="totais?.quantidade ?? null">
     <template #acoes>
       <Button variant="outline" :disabled="exportando" @click="exportar"><Download /> <span class="hidden sm:inline">Exportar</span></Button>
-      <Button @click="novoAberto = true"><Plus /> Novo lançamento</Button>
+      <Button @click="abrirForm()"><Plus /> Novo lançamento</Button>
     </template>
     <template #filtros>
       <div class="flex w-full items-center gap-2 sm:contents">
@@ -268,6 +280,7 @@ async function exportar() {
             <TableHead class="hidden xl:table-cell">Lote</TableHead>
             <TableHead class="hidden sm:table-cell">Situação</TableHead>
             <TableHead class="text-right">Valor</TableHead>
+            <TableHead class="w-12 sm:w-20"><span class="sr-only">Ações</span></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -286,9 +299,17 @@ async function exportar() {
             <TableCell class="hidden xl:table-cell">{{ l.lote ?? '—' }}</TableCell>
             <TableCell class="hidden sm:table-cell"><SeloSituacao :situacao="l.situacao" :tipo="l.tipo" /></TableCell>
             <TableCell class="text-right"><ValorTipo :valor="l.valor" :tipo="l.tipo" /></TableCell>
+            <TableCell class="px-1 text-right">
+              <!-- Cancelado não pode ser alterado (a API recusa). -->
+              <Button v-if="l.situacao !== 'CANCELADO'" size="icon-sm" variant="ghost" title="Editar" :aria-label="`Editar ${l.descricao}`"
+                @click.stop="abrirForm(l)" @keydown.enter.stop><Pencil /></Button>
+              <!-- Pago precisa ser estornado antes de cancelar (a API recusa). -->
+              <Button v-if="['PENDENTE', 'VENCIDO'].includes(l.situacao)" size="icon-sm" variant="ghost" class="hidden text-destructive sm:inline-flex" title="Cancelar" :aria-label="`Cancelar ${l.descricao}`"
+                @click.stop="cancelar(l)" @keydown.enter.stop><Ban /></Button>
+            </TableCell>
           </TableRow>
           <TableRow v-if="!lista.length && !carregando">
-            <TableCell colspan="6" class="py-10 text-center text-muted-foreground">Nenhum lançamento encontrado com esses filtros.</TableCell>
+            <TableCell colspan="7" class="py-10 text-center text-muted-foreground">Nenhum lançamento encontrado com esses filtros.</TableCell>
           </TableRow>
         </TableBody>
       </Table>
@@ -301,6 +322,7 @@ async function exportar() {
     </div>
   </main>
 
-  <FormLancamento v-model:open="novoAberto" :padrao="padraoNovo" @salvo="carregar" />
+  <FormLancamento v-model:open="formAberto" :lancamento="emEdicao" :padrao="padraoNovo" @salvo="carregar" />
+  <DialogoCancelamento v-model:open="cancelamentoAberto" :lancamento="paraCancelar" @cancelado="carregar" />
   <DetalheLancamento :id="detalheId" @fechar="detalheId = null" @alterado="carregar" />
 </template>
