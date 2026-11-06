@@ -37,8 +37,8 @@ const invalido = computed(() => escolha.value === 'custom' && inicio.value && fi
 <template>
   <div class="flex flex-wrap items-center gap-2">
     <ToggleGroup v-model="escolha" type="single" variant="outline" size="sm" aria-label="Período">
-      <ToggleGroupItem v-for="n in atalhos" :key="n" :value="String(n)" class="px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90">{{ n }} dias</ToggleGroupItem>
-      <ToggleGroupItem v-if="personalizado" value="custom" class="px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90">Personalizado</ToggleGroupItem>
+      <ToggleGroupItem v-for="n in atalhos" :key="n" :value="String(n)" class="px-2 sm:px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90">{{ n }} dias</ToggleGroupItem>
+      <ToggleGroupItem v-if="personalizado" value="custom" class="px-2 sm:px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90">Personalizado</ToggleGroupItem>
     </ToggleGroup>
     <template v-if="escolha === 'custom'">
       <Input v-model="inicio" type="date" :max="fim || hoje()" class="h-8 w-38" aria-label="Data inicial" :aria-invalid="invalido" />

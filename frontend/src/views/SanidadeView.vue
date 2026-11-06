@@ -182,7 +182,7 @@ const SEL = 'px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foregr
           <Search class="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input v-model="filtros.busca" placeholder="Buscar por produto ou animal" class="pl-8" />
         </div>
-        <label class="flex items-center gap-2 text-sm">
+        <label class="flex items-center gap-2 text-sm pointer-coarse:min-h-11">
           <input v-model="filtros.vigentes" type="checkbox" class="size-4 accent-primary" /> Só em carência
         </label>
       </template>
@@ -206,7 +206,7 @@ const SEL = 'px-3 data-[state=on]:bg-primary data-[state=on]:text-primary-foregr
             <TableRow v-for="a in aplicacoes" :key="a.id">
               <TableCell class="whitespace-nowrap text-sm tabular-nums">{{ dataBr(a.data_aplicacao) }}</TableCell>
               <TableCell class="text-sm">
-                <RouterLink :to="`/animais/${a.animal_id}`" class="font-medium hover:underline">{{ a.animal?.nome || a.animal?.brinco }}</RouterLink>
+                <RouterLink :to="`/animais/${a.animal_id}`" class="font-medium hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">{{ a.animal?.nome || a.animal?.brinco }}</RouterLink>
                 <p v-if="a.animal?.nome" class="font-mono text-xs text-muted-foreground">{{ a.animal.brinco }}</p>
               </TableCell>
               <TableCell>

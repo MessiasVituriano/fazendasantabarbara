@@ -1,14 +1,29 @@
 <script setup>
-import { useLocalStorage } from '@vueuse/core'
+import { computed } from 'vue'
+import { useLocalStorage, useMediaQuery } from '@vueuse/core'
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet'
 import { useMenu } from '@/composables/useMenu'
 import BotoesRodape from './BotoesRodape.vue'
 import Marca from './Marca.vue'
 import MenuNavegacao from './MenuNavegacao.vue'
 
-/** Menu lateral: fixo e recolhível no desktop, gaveta no celular (tema/usuário ficam no cabeçalho). */
-const recolhido = useLocalStorage('menu.recolhido', false)
+/**
+ * Menu lateral: fixo e recolhível no desktop, só ícones no tablet (o botão do rodapé abre a gaveta
+ * com os nomes) e gaveta no celular (tema/usuário ficam no cabeçalho).
+ */
+const preferenciaRecolhido = useLocalStorage('menu.recolhido', false)
+const telaGrande = useMediaQuery('(min-width: 1024px)')
+const recolhido = computed(() => !telaGrande.value || preferenciaRecolhido.value)
 const { aberto } = useMenu()
+
+function acionarRodape() {
+  if (telaGrande.value) preferenciaRecolhido.value = !preferenciaRecolhido.value
+  else aberto.value = true
+}
+const rotuloRodape = computed(() => {
+  if (!telaGrande.value) return 'Abrir menu'
+  return preferenciaRecolhido.value ? 'Expandir menu' : 'Recolher menu'
+})
 </script>
 
 <template>
@@ -19,7 +34,7 @@ const { aberto } = useMenu()
     <div class="flex h-14 items-center px-3"><Marca :compacta="recolhido" /></div>
     <div class="flex-1 overflow-y-auto px-2 py-2"><MenuNavegacao :recolhido="recolhido" /></div>
     <div class="border-t border-sidebar-border p-2">
-      <BotoesRodape :recolhido="recolhido" @recolher="recolhido = !recolhido" />
+      <BotoesRodape :recolhido="recolhido" :aria-label="rotuloRodape" @recolher="acionarRodape" />
     </div>
   </aside>
 
@@ -29,7 +44,7 @@ const { aberto } = useMenu()
       <SheetDescription class="sr-only">Navegação do sistema</SheetDescription>
       <div class="flex h-full flex-col">
         <div class="flex h-14 items-center px-4"><Marca /></div>
-        <div class="flex-1 px-2 py-2"><MenuNavegacao @navegou="aberto = false" /></div>
+        <div class="min-h-0 flex-1 overflow-y-auto px-2 py-2"><MenuNavegacao @navegou="aberto = false" /></div>
       </div>
     </SheetContent>
   </Sheet>

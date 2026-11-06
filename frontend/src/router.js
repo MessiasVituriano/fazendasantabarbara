@@ -7,7 +7,8 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/entrar', name: 'entrar', component: () => import('./views/EntrarView.vue'), meta: { publica: true } },
-    { path: '/', name: 'painel', component: () => import('./views/PainelView.vue'), meta: SO_GESTOR },
+    { path: '/', redirect: '/financeiro' },
+    { path: '/painel', name: 'painel', component: () => import('./views/PainelView.vue'), meta: SO_GESTOR },
     { path: '/animais', name: 'animais', component: () => import('./views/AnimaisView.vue') },
     { path: '/animais/:id', name: 'animal', component: () => import('./views/AnimalView.vue'), props: true },
     { path: '/ordenha', name: 'ordenha', component: () => import('./views/OrdenhaView.vue') },

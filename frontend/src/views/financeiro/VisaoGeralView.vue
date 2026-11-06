@@ -87,8 +87,8 @@ const AGENDA = [
 
     <template v-if="dados">
       <!-- Dinheiro disponível -->
-      <section class="grid gap-4 lg:grid-cols-3">
-        <Card class="lg:col-span-1">
+      <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <Card class="md:col-span-2 xl:col-span-1">
           <CardHeader>
             <CardDescription class="flex items-center gap-1.5"><Wallet class="size-4" /> Dinheiro disponível hoje</CardDescription>
             <CardTitle class="text-3xl tabular-nums" :class="dados.saldo.total < 0 ? 'text-red-700 dark:text-red-400' : ''">{{ moeda(dados.saldo.total) }}</CardTitle>
@@ -141,8 +141,8 @@ const AGENDA = [
               <Button variant="link" size="sm" as-child class="px-0"><RouterLink to="/financeiro/contas-a-pagar-e-receber">Ver contas</RouterLink></Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <dl class="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+          <CardContent class="@container">
+            <dl class="grid grid-cols-2 gap-3 text-sm @lg:grid-cols-4">
               <div v-for="f in AGENDA" :key="f[0]" class="rounded-md p-2" :class="f[0] === 'vencido' && dados[lado[0]].vencido.quantidade ? 'bg-red-50 dark:bg-red-950/50' : 'bg-muted/50'">
                 <dt class="text-xs" :class="f[0] === 'vencido' && dados[lado[0]].vencido.quantidade ? 'font-medium text-red-700 dark:text-red-400' : 'text-muted-foreground'">{{ f[1] }}</dt>
                 <dd class="font-medium tabular-nums">{{ moeda(dados[lado[0]][f[0]].valor) }}</dd>
@@ -153,8 +153,8 @@ const AGENDA = [
         </Card>
       </section>
 
-      <section class="grid gap-4 lg:grid-cols-5">
-        <Card class="lg:col-span-3">
+      <section class="grid grid-cols-1 gap-4 xl:grid-cols-5">
+        <Card class="xl:col-span-3">
           <CardHeader>
             <CardTitle class="text-base">Recebido × pago — últimos 12 meses</CardTitle>
             <CardDescription>Valores realizados, pela data de pagamento.</CardDescription>
@@ -162,7 +162,7 @@ const AGENDA = [
           <CardContent><GraficoReceitasDespesas :serie="dados.serie_mensal" rotulo-a="Recebido" rotulo-b="Pago" descricao="Recebido e pago por mês" /></CardContent>
         </Card>
 
-        <Card class="lg:col-span-2">
+        <Card class="xl:col-span-2">
           <CardHeader>
             <CardTitle class="text-base">Próximos vencimentos</CardTitle>
             <CardDescription>Contas em aberto, das mais antigas para as mais novas.</CardDescription>

@@ -138,14 +138,18 @@ const totalPagos = computed(() => itens.value.reduce((s, l) => s + Number(l.valo
     <template v-if="visao === 'aberto'">
       <section v-for="g in grupos" :key="g.chave">
         <div class="mb-2 flex items-center gap-3">
-          <input type="checkbox" class="size-4 accent-primary" :checked="todosDoGrupo(g)" :aria-label="`Selecionar ${g.titulo}`" @change="alternarGrupo(g)" />
+          <label class="flex shrink-0 pointer-coarse:-m-2.5 pointer-coarse:p-2.5">
+            <input type="checkbox" class="size-4 accent-primary" :checked="todosDoGrupo(g)" :aria-label="`Selecionar ${g.titulo}`" @change="alternarGrupo(g)" />
+          </label>
           <h2 class="text-sm font-semibold" :class="g.cor">{{ g.titulo }}</h2>
           <span class="text-sm tabular-nums text-muted-foreground">{{ g.lista.length }} · {{ moeda(g.total) }}</span>
         </div>
         <Card class="gap-0 divide-y py-0">
           <div v-for="l in g.lista" :key="l.id" class="flex items-center gap-3 px-4 py-3">
-            <input v-model="selecionados" type="checkbox" :value="l.id" class="size-4 shrink-0 accent-primary" :aria-label="`Selecionar ${l.descricao}`" />
-            <button class="min-w-0 flex-1 text-left" @click="detalheId = l.id">
+            <label class="flex shrink-0 pointer-coarse:-m-2.5 pointer-coarse:p-2.5">
+              <input v-model="selecionados" type="checkbox" :value="l.id" class="size-4 shrink-0 accent-primary" :aria-label="`Selecionar ${l.descricao}`" />
+            </label>
+            <button class="min-w-0 flex-1 text-left pointer-coarse:min-h-11" @click="detalheId = l.id">
               <p class="truncate font-medium">{{ l.descricao }}</p>
               <p class="truncate text-xs text-muted-foreground">
                 Vence {{ dataBr(l.data_vencimento) }}

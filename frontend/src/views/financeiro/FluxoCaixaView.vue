@@ -117,7 +117,7 @@ function exportarCsv() {
     <AlertaErros :mensagens="erros" />
 
     <template v-if="dados">
-      <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <section class="grid gap-4 sm:grid-cols-2 min-[87.5rem]:grid-cols-5">
         <Card>
           <CardHeader><CardDescription>Saldo inicial · {{ dataBr(dados.inicio) }}</CardDescription>
             <CardTitle class="text-xl tabular-nums" :class="corValor(dados.saldo_inicial)">{{ moeda(dados.saldo_inicial) }}</CardTitle></CardHeader>
@@ -155,8 +155,8 @@ function exportarCsv() {
         A previsão inclui contas vencidas e não pagas, consideradas para hoje: {{ moeda(vencidosPrevistos.despesas) }} a pagar e {{ moeda(vencidosPrevistos.receitas) }} a receber.
       </p>
 
-      <section class="grid gap-4 lg:grid-cols-3">
-        <Card class="lg:col-span-2">
+      <section class="grid grid-cols-1 gap-4 min-[87.5rem]:grid-cols-3">
+        <Card class="min-[87.5rem]:col-span-2">
           <CardHeader>
             <CardTitle class="text-base">Entradas × saídas</CardTitle>
             <CardDescription>Realizado por {{ agrupamento === 'dia' ? 'dia' : 'mês' }}, com o saldo ao final de cada período.</CardDescription>
