@@ -48,7 +48,7 @@ const detalhe = ref(null)
 const corResultado = (v) => (v < 0 ? 'text-red-700 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400')
 
 const AGENDA = [
-  ['vencido', 'Vencido'],
+  ['vencido', 'Atrasado'],
   ['hoje', 'Vence hoje'],
   ['proximos_7_dias', 'Próximos 7 dias'],
   ['proximos_30_dias', '8 a 30 dias'],
@@ -174,7 +174,7 @@ const AGENDA = [
                   <span class="w-12 shrink-0 text-xs tabular-nums" :class="vencido(l) ? 'font-semibold text-red-700 dark:text-red-400' : 'text-muted-foreground'">{{ dataBr(l.data_vencimento).slice(0, 5) }}</span>
                   <span class="min-w-0 flex-1">
                     <span class="block truncate">{{ l.descricao }}</span>
-                    <span class="block truncate text-xs text-muted-foreground">{{ l.pessoa ?? l.categoria }}<template v-if="vencido(l)"> · vencido</template></span>
+                    <span class="block truncate text-xs text-muted-foreground">{{ l.pessoa ?? l.categoria }}<template v-if="vencido(l)"> · atrasado</template></span>
                   </span>
                   <ValorTipo :valor="l.valor" :tipo="l.tipo" class="text-sm" />
                 </button>

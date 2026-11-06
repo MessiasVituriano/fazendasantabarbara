@@ -22,6 +22,7 @@ class LancamentoController extends Controller
      * Filtros: tipo, situacao[] (PENDENTE|VENCIDO|PAGO|CANCELADO|EM_ABERTO), categoria_id[], lote_id ("sem" = sem lote),
      * pessoa_id, conta_financeira_id, busca, inicio/fim sobre `base` (competencia|vencimento|pagamento).
      * meta.totais soma o filtro inteiro (não só a página), ignorando cancelados quando não filtrados.
+     * Em meta.totais, `pago` usa o valor efetivamente pago (com juros/desconto) e `pendente` o valor original do que está em aberto.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -54,6 +55,8 @@ class LancamentoController extends Controller
         $totais = $filtro()->toBase()->selectRaw("
             SUM(CASE WHEN tipo = 'RECEITA' THEN valor ELSE 0 END) AS receitas,
             SUM(CASE WHEN tipo = 'DESPESA' THEN valor ELSE 0 END) AS despesas,
+            SUM(CASE WHEN situacao = 'PAGO' THEN valor_pago ELSE 0 END) AS pago,
+            SUM(CASE WHEN situacao = 'PENDENTE' THEN valor ELSE 0 END) AS pendente,
             COUNT(*) AS quantidade")->first();
 
         $ordem = $dados['ordem'] ?? ($coluna === 'data_vencimento' ? 'asc' : 'desc');
@@ -69,6 +72,8 @@ class LancamentoController extends Controller
             'receitas' => round((float) $totais->receitas, 2),
             'despesas' => round((float) $totais->despesas, 2),
             'saldo' => round((float) $totais->receitas - (float) $totais->despesas, 2),
+            'pago' => round((float) $totais->pago, 2),
+            'pendente' => round((float) $totais->pendente, 2),
         ]]]);
     }
 

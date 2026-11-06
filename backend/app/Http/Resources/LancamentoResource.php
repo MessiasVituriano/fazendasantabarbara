@@ -26,7 +26,7 @@ class LancamentoResource extends JsonResource
             'data_competencia' => $this->data_competencia?->toDateString(),
             'data_vencimento' => $this->data_vencimento?->toDateString(),
             'situacao' => $situacao,
-            'situacao_label' => $situacao === 'VENCIDO' ? 'Vencido' : $this->situacao->label(),
+            'situacao_label' => $situacao === 'VENCIDO' ? 'Atrasado' : $this->situacao->label(),
             'data_pagamento' => $this->data_pagamento?->toDateString(),
             'valor_pago' => $this->valor_pago,
             'conta_financeira_id' => $this->conta_financeira_id,

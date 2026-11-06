@@ -1,7 +1,7 @@
 <script setup>
 import { Badge } from '@/components/ui/badge'
 
-/** Situação do lançamento: Pendente (a vencer), Vencido, Pago, Cancelado. */
+/** Situação do lançamento: No dia (pendente a vencer), Atrasado (pendente vencido), Pago, Cancelado. */
 defineProps({ situacao: { type: String, required: true }, tipo: { type: String, default: 'DESPESA' } })
 
 const COR = {
@@ -10,7 +10,7 @@ const COR = {
   PAGO: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
   CANCELADO: 'bg-muted text-muted-foreground line-through',
 }
-const ROTULO = { PENDENTE: 'A vencer', VENCIDO: 'Vencido', CANCELADO: 'Cancelado' }
+const ROTULO = { PENDENTE: 'No dia', VENCIDO: 'Atrasado', CANCELADO: 'Cancelado' }
 </script>
 
 <template>

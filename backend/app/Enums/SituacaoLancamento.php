@@ -17,7 +17,7 @@ enum SituacaoLancamento: string
     public function label(): string
     {
         return match ($this) {
-            self::PENDENTE => 'Pendente',
+            self::PENDENTE => 'No dia',
             self::PAGO => 'Pago',
             self::CANCELADO => 'Cancelado',
         };
@@ -27,8 +27,8 @@ enum SituacaoLancamento: string
     public static function opcoesDeFiltro(): array
     {
         return [
-            ['value' => 'PENDENTE', 'label' => 'Pendente (a vencer)'],
-            ['value' => 'VENCIDO', 'label' => 'Vencido'],
+            ['value' => 'PENDENTE', 'label' => 'No dia'],
+            ['value' => 'VENCIDO', 'label' => 'Atrasado'],
             ['value' => 'PAGO', 'label' => 'Pago'],
             ['value' => 'CANCELADO', 'label' => 'Cancelado'],
         ];

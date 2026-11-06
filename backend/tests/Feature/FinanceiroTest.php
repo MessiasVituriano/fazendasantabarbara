@@ -343,6 +343,26 @@ class FinanceiroTest extends TestCase
         $this->getJson('/api/financeiro/lancamentos?tipo=DESPESA&categoria_id[]='.$this->cat('suplementacao_mineral'))->assertJsonCount(2, 'data');
     }
 
+    public function test_totais_da_listagem_separam_pago_de_pendente(): void
+    {
+        $pago = $this->lancar(['valor' => 100])[0];
+        $this->postJson("/api/financeiro/lancamentos/{$pago['id']}/baixa", ['data_pagamento' => '2026-11-03', 'conta_financeira_id' => $this->caixa->id, 'valor_pago' => 110])->assertOk();
+        $this->lancar(['valor' => 200]);
+        $this->lancar(['valor' => 300, 'data_vencimento' => '2026-10-20']);
+        $cancelado = $this->lancar(['valor' => 999])[0];
+        $this->postJson("/api/financeiro/lancamentos/{$cancelado['id']}/cancelamento", ['motivo' => 'Duplicado'])->assertOk();
+
+        $this->getJson('/api/financeiro/lancamentos?tipo=DESPESA')
+            ->assertJsonPath('meta.totais.quantidade', 3)
+            ->assertJsonPath('meta.totais.pago', 110)
+            ->assertJsonPath('meta.totais.pendente', 500);
+
+        $this->getJson('/api/financeiro/lancamentos?situacao[]=VENCIDO')
+            ->assertJsonPath('meta.totais.pago', 0)
+            ->assertJsonPath('meta.totais.pendente', 300)
+            ->assertJsonPath('data.0.situacao_label', 'Atrasado');
+    }
+
     public function test_conta_nao_pode_ter_saldo_inicial_depois_de_pagamentos(): void
     {
         $this->lancar(['data_pagamento' => '2026-03-01', 'conta_financeira_id' => $this->caixa->id]);

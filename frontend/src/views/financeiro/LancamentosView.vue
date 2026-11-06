@@ -189,8 +189,8 @@ async function exportar() {
         <ToggleGroupItem value="DESPESA" class="px-3">Despesas</ToggleGroupItem>
       </ToggleGroup>
       <ToggleGroup v-model="filtros.situacao" type="multiple" variant="outline" size="sm" aria-label="Situação">
-        <ToggleGroupItem value="PENDENTE" class="px-3">A vencer</ToggleGroupItem>
-        <ToggleGroupItem value="VENCIDO" class="px-3">Vencidos</ToggleGroupItem>
+        <ToggleGroupItem value="PENDENTE" class="px-3">No dia</ToggleGroupItem>
+        <ToggleGroupItem value="VENCIDO" class="px-3">Atrasados</ToggleGroupItem>
         <ToggleGroupItem value="PAGO" class="px-3">Pagos</ToggleGroupItem>
         <ToggleGroupItem value="CANCELADO" class="px-3">Cancelados</ToggleGroupItem>
       </ToggleGroup>
