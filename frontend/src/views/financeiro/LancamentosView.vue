@@ -2,8 +2,9 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { watchDebounced } from '@vueuse/core'
-import { ChevronLeft, ChevronRight, Download, Paperclip, Plus, Search } from '@lucide/vue'
+import { ChevronLeft, ChevronRight, Download, Paperclip, Plus, Search, SlidersHorizontal } from '@lucide/vue'
 import { toast } from 'vue-sonner'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -105,6 +106,15 @@ watch(pagina, carregar)
 carregar()
 
 const categoriasFiltro = computed(() => categorias.value.filter((c) => filtros.value.tipo === TODOS || c.tipo === filtros.value.tipo))
+const rotuloData = computed(() => ({ pagamento: 'Pagamento', vencimento: 'Vencimento' })[filtros.value.base] ?? 'Competência')
+
+/** No celular os filtros ficam recolhidos; a busca continua sempre à vista. */
+const filtrosAbertos = ref(false)
+const filtrosAtivos = computed(() => {
+  const f = filtros.value
+  return [f.tipo !== TODOS, f.situacao.length > 0, f.base !== 'competencia', f.periodo !== 'mes', f.categoria_id !== TODOS, f.lote_id !== TODOS].filter(Boolean).length
+})
+
 const totais = computed(() => meta.value?.totais)
 const ultimaPagina = computed(() => meta.value?.last_page ?? 1)
 
@@ -150,6 +160,17 @@ async function exportar() {
       <Button @click="novoAberto = true"><Plus /> Novo lançamento</Button>
     </template>
     <template #filtros>
+      <div class="flex w-full items-center gap-2 sm:contents">
+        <div class="relative min-w-0 flex-1 sm:order-last sm:w-56 sm:flex-none">
+          <Search class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input v-model="filtros.busca" placeholder="Descrição, documento, pessoa" class="h-8 pl-8" />
+        </div>
+        <Button variant="outline" class="sm:hidden" :aria-expanded="filtrosAbertos" @click="filtrosAbertos = !filtrosAbertos">
+          <SlidersHorizontal /> Filtros
+          <Badge v-if="filtrosAtivos" variant="secondary" class="tabular-nums">{{ filtrosAtivos }}</Badge>
+        </Button>
+      </div>
+      <div class="w-full flex-wrap items-center gap-2 sm:contents" :class="filtrosAbertos ? 'flex' : 'hidden'">
       <ToggleGroup v-model="filtros.tipo" type="single" variant="outline" size="sm" aria-label="Tipo" @update:model-value="(v) => !v && (filtros.tipo = TODOS)">
         <ToggleGroupItem :value="TODOS" class="px-3">Todos</ToggleGroupItem>
         <ToggleGroupItem value="RECEITA" class="px-3">Receitas</ToggleGroupItem>
@@ -193,9 +214,6 @@ async function exportar() {
           <SelectItem v-for="l in lotes" :key="l.id" :value="String(l.id)">{{ l.nome }}</SelectItem>
         </SelectContent>
       </Select>
-      <div class="relative w-full sm:w-56">
-        <Search class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input v-model="filtros.busca" placeholder="Descrição, documento, pessoa" class="h-8 pl-8" />
       </div>
     </template>
   </CabecalhoPagina>
@@ -222,14 +240,32 @@ async function exportar() {
       O saldo em conta (só o que foi pago) está na Visão geral e no Fluxo de caixa.
     </p>
 
-    <Card class="py-0">
+    <!-- Celular: lista em cartões, com o valor sempre visível -->
+    <Card class="gap-0 divide-y py-0 sm:hidden">
+      <button v-for="l in lista" :key="l.id" class="flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-accent/50" :class="l.situacao === 'CANCELADO' ? 'opacity-60' : ''" @click="detalheId = l.id">
+        <span class="flex w-full items-start justify-between gap-3">
+          <span class="min-w-0 truncate font-medium">{{ l.descricao }} <Paperclip v-if="l.anexos_count" class="inline size-3.5 text-muted-foreground" /></span>
+          <ValorTipo :valor="l.valor" :tipo="l.tipo" class="shrink-0 font-semibold" />
+        </span>
+        <span class="block w-full truncate text-xs text-muted-foreground">
+          {{ l.pessoa ?? l.categoria }}<template v-if="filtros.base !== 'vencimento'"> · vence {{ dataBr(l.data_vencimento) }}</template>
+        </span>
+        <span class="flex w-full items-center justify-between gap-3">
+          <SeloSituacao :situacao="l.situacao" :tipo="l.tipo" />
+          <span class="text-xs tabular-nums text-muted-foreground">{{ rotuloData }} {{ dataBr(l['data_' + filtros.base]) }}</span>
+        </span>
+      </button>
+      <p v-if="!lista.length && !carregando" class="py-10 text-center text-sm text-muted-foreground">Nenhum lançamento encontrado com esses filtros.</p>
+    </Card>
+
+    <Card class="hidden py-0 sm:flex">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead class="w-28">{{ filtros.base === 'pagamento' ? 'Pagamento' : filtros.base === 'vencimento' ? 'Vencimento' : 'Competência' }}</TableHead>
+            <TableHead class="w-28">{{ rotuloData }}</TableHead>
             <TableHead>Descrição</TableHead>
-            <TableHead class="hidden md:table-cell">Categoria</TableHead>
-            <TableHead class="hidden lg:table-cell">Lote</TableHead>
+            <TableHead class="hidden xl:table-cell">Categoria</TableHead>
+            <TableHead class="hidden xl:table-cell">Lote</TableHead>
             <TableHead class="hidden sm:table-cell">Situação</TableHead>
             <TableHead class="text-right">Valor</TableHead>
           </TableRow>
@@ -243,11 +279,11 @@ async function exportar() {
               <p class="truncate text-xs text-muted-foreground">
                 {{ l.pessoa ?? '' }}<template v-if="l.pessoa && filtros.base !== 'vencimento'"> · </template>
                 <template v-if="filtros.base !== 'vencimento'">vence {{ dataBr(l.data_vencimento) }}</template>
+                <span class="xl:hidden"> · {{ l.categoria }}</span>
               </p>
-              <SeloSituacao class="mt-1 sm:hidden" :situacao="l.situacao" :tipo="l.tipo" />
             </TableCell>
-            <TableCell class="hidden md:table-cell">{{ l.categoria }}</TableCell>
-            <TableCell class="hidden lg:table-cell">{{ l.lote ?? '—' }}</TableCell>
+            <TableCell class="hidden xl:table-cell">{{ l.categoria }}</TableCell>
+            <TableCell class="hidden xl:table-cell">{{ l.lote ?? '—' }}</TableCell>
             <TableCell class="hidden sm:table-cell"><SeloSituacao :situacao="l.situacao" :tipo="l.tipo" /></TableCell>
             <TableCell class="text-right"><ValorTipo :valor="l.valor" :tipo="l.tipo" /></TableCell>
           </TableRow>

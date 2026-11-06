@@ -120,3 +120,8 @@
   body { @apply bg-background text-foreground; }
 }
 
+/* Telas de toque: caixas de seleção maiores (fora das layers para vencer o utilitário size-4). */
+@media (pointer: coarse) {
+  input[type='checkbox'] { width: 1.5rem; height: 1.5rem; }
+}
+

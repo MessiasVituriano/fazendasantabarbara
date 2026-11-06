@@ -31,4 +31,4 @@ export function useSessao() {
 }
 
 /** Página inicial de cada perfil. */
-export const inicioDoPerfil = (perfil) => (perfil === 'GESTOR' ? '/' : '/ordenha')
+export const inicioDoPerfil = (perfil) => (perfil === 'GESTOR' ? '/financeiro' : '/ordenha')

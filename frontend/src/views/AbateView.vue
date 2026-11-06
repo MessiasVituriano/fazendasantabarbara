@@ -76,7 +76,23 @@ const liberados = computed(() => meta.value.total - meta.value.em_carencia)
       </Card>
     </div>
 
-    <div class="overflow-hidden rounded-xl border bg-card" :class="{ 'opacity-50': carregando }">
+    <!-- Celular: lista compacta, com a situação sanitária sempre visível -->
+    <ul class="divide-y overflow-hidden rounded-xl border bg-card sm:hidden" :class="{ 'opacity-50': carregando }">
+      <li v-for="a in animais" :key="a.id" :class="{ 'bg-destructive/5': a.em_carencia }">
+        <RouterLink :to="`/animais/${a.id}`" class="flex items-center gap-3 p-3">
+          <AvatarAnimal :animal="a" :tamanho="44" />
+          <div class="min-w-0 flex-1 space-y-1">
+            <p class="truncate font-medium">{{ a.nome || a.brinco }}<span v-if="a.nome" class="ml-2 font-mono text-xs font-normal text-muted-foreground">{{ a.brinco }}</span></p>
+            <p class="truncate text-xs text-muted-foreground">{{ idade(a.data_nascimento) }} · {{ a.aptidao_label }} · {{ a.piquete_atual ? `Piquete ${a.piquete_atual.identificacao}` : 'Sem piquete' }}</p>
+            <Badge v-if="a.alerta" variant="destructive" :title="a.alerta.mensagem"><TriangleAlert /> Carência até {{ dataBr(a.carencia_ate) }}</Badge>
+            <Badge v-else variant="outline" class="text-emerald-700 dark:text-emerald-400"><CircleCheck /> Liberado</Badge>
+          </div>
+        </RouterLink>
+      </li>
+      <li v-if="!animais.length && !carregando" class="py-10 text-center text-sm text-muted-foreground">Nenhum animal nesta lista.</li>
+    </ul>
+
+    <div class="hidden overflow-hidden rounded-xl border bg-card sm:block" :class="{ 'opacity-50': carregando }">
       <Table>
         <TableHeader>
           <TableRow>
