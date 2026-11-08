@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { CircleCheck, TriangleAlert } from '@lucide/vue'
+import { CircleCheck, TrendingDown, TrendingUp, TriangleAlert } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -11,7 +11,7 @@ import http from '../api/http'
 import AlertaErros from '../components/AlertaErros.vue'
 import AvatarAnimal from '../components/AvatarAnimal.vue'
 import CabecalhoPagina from '../components/layout/CabecalhoPagina.vue'
-import { dataBr, idade } from '../formatos'
+import { dataBr, idade, numero } from '../formatos'
 
 /** RF04 — animais de corte para abate, com bloqueio por carência sanitária. */
 const router = useRouter()
@@ -43,6 +43,9 @@ async function carregar() {
 }
 watch([categoria, ocultar], carregar, { immediate: true })
 const liberados = computed(() => meta.value.total - meta.value.em_carencia)
+/** Previsão para o peso alvo: "Já atingiu", a data, ou o motivo de não haver previsão. */
+const previsao = (c) => (!c ? '—' : c.previsao_alvo?.dias === 0 ? 'Já atingiu' : c.previsao_alvo ? dataBr(c.previsao_alvo.data) : c.situacao_tendencia === 'INSUFICIENTE' ? 'Poucas pesagens' : 'Não atinge no ritmo')
+const prontos30 = computed(() => animais.value.filter((a) => a.crescimento?.previsao_alvo && a.crescimento.previsao_alvo.dias <= 30 && !a.em_carencia).length)
 </script>
 
 <template>
@@ -61,7 +64,7 @@ const liberados = computed(() => meta.value.total - meta.value.em_carencia)
   <main class="space-y-4 px-4 py-6 md:px-6">
     <AlertaErros :mensagens="erros" />
 
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid gap-4 sm:grid-cols-3">
       <Card class="gap-1">
         <CardHeader>
           <CardDescription class="flex items-center gap-1.5"><CircleCheck class="size-4 text-emerald-600 dark:text-emerald-400" /> Liberados para abate</CardDescription>
@@ -74,6 +77,12 @@ const liberados = computed(() => meta.value.total - meta.value.em_carencia)
           <CardTitle class="text-3xl tabular-nums" :class="{ 'text-destructive': meta.em_carencia }">{{ meta.em_carencia }}</CardTitle>
         </CardHeader>
       </Card>
+      <Card class="gap-1">
+        <CardHeader>
+          <CardDescription>No peso alvo em até 30 dias (liberados)</CardDescription>
+          <CardTitle class="text-3xl tabular-nums">{{ prontos30 }}</CardTitle>
+        </CardHeader>
+      </Card>
     </div>
 
     <!-- Celular: lista compacta, com a situação sanitária sempre visível -->
@@ -84,6 +93,10 @@ const liberados = computed(() => meta.value.total - meta.value.em_carencia)
           <div class="min-w-0 flex-1 space-y-1">
             <p class="truncate font-medium">{{ a.nome || a.brinco }}<span v-if="a.nome" class="ml-2 font-mono text-xs font-normal text-muted-foreground">{{ a.brinco }}</span></p>
             <p class="truncate text-xs text-muted-foreground">{{ idade(a.data_nascimento) }} · {{ a.aptidao_label }} · {{ a.piquete_atual ? `Piquete ${a.piquete_atual.identificacao}` : 'Sem piquete' }}</p>
+            <p v-if="a.crescimento" class="text-xs tabular-nums">
+              {{ numero(a.crescimento.peso_atual, 0) }} kg · {{ a.crescimento.gmd !== null ? `${numero(a.crescimento.gmd, 2)} kg/dia` : 'sem tendência' }} ·
+              {{ numero(a.crescimento.alvo_kg, 0) }} kg: {{ previsao(a.crescimento) }}
+            </p>
             <Badge v-if="a.alerta" variant="destructive" :title="a.alerta.mensagem"><TriangleAlert /> Carência até {{ dataBr(a.carencia_ate) }}</Badge>
             <Badge v-else variant="outline" class="text-emerald-700 dark:text-emerald-400"><CircleCheck /> Liberado</Badge>
           </div>
@@ -97,7 +110,8 @@ const liberados = computed(() => meta.value.total - meta.value.em_carencia)
         <TableHeader>
           <TableRow>
             <TableHead>Animal</TableHead><TableHead>Idade</TableHead><TableHead>Aptidão</TableHead>
-            <TableHead>Piquete</TableHead><TableHead>Situação sanitária</TableHead>
+            <TableHead>Piquete</TableHead><TableHead class="text-right">Peso</TableHead><TableHead class="text-right">GMD</TableHead>
+            <TableHead>Peso alvo</TableHead><TableHead>Situação sanitária</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -111,13 +125,24 @@ const liberados = computed(() => meta.value.total - meta.value.em_carencia)
             <TableCell>{{ idade(a.data_nascimento) }}</TableCell>
             <TableCell>{{ a.aptidao_label }}</TableCell>
             <TableCell>{{ a.piquete_atual?.identificacao ?? '—' }}</TableCell>
+            <TableCell class="text-right tabular-nums">{{ a.crescimento?.peso_atual != null ? `${numero(a.crescimento.peso_atual, 0)} kg` : '—' }}</TableCell>
+            <TableCell class="text-right tabular-nums whitespace-nowrap">
+              <span v-if="a.crescimento?.gmd != null" class="inline-flex items-center gap-1" :class="{ 'text-destructive': a.crescimento.gmd <= 0 }">
+                <component :is="a.crescimento.gmd > 0 ? TrendingUp : TrendingDown" class="size-3.5" />{{ numero(a.crescimento.gmd, 2) }}
+              </span>
+              <span v-else class="text-muted-foreground">—</span>
+            </TableCell>
+            <TableCell>
+              <p class="tabular-nums">{{ previsao(a.crescimento) }}</p>
+              <p v-if="a.crescimento" class="text-xs text-muted-foreground">{{ numero(a.crescimento.alvo_kg, 0) }} kg · {{ a.crescimento.alvo_origem === 'META_LOTE' ? `meta do ${a.crescimento.lote.nome}` : 'peso de abate padrão' }}</p>
+            </TableCell>
             <TableCell>
               <Badge v-if="a.alerta" variant="destructive" :title="a.alerta.mensagem"><TriangleAlert /> Carência até {{ dataBr(a.carencia_ate) }}</Badge>
               <Badge v-else variant="outline" class="text-emerald-700 dark:text-emerald-400"><CircleCheck /> Liberado</Badge>
             </TableCell>
           </TableRow>
           <TableRow v-if="!animais.length && !carregando">
-            <TableCell colspan="5" class="py-10 text-center text-muted-foreground">Nenhum animal nesta lista.</TableCell>
+            <TableCell colspan="8" class="py-10 text-center text-muted-foreground">Nenhum animal nesta lista.</TableCell>
           </TableRow>
         </TableBody>
       </Table>

@@ -22,6 +22,8 @@ class MovimentoEstoqueResource extends JsonResource
                 'nome' => $this->item->nome,
                 'unidade_sigla' => $this->item->unidade->sigla(),
             ]),
+            'lote_id' => $this->lote_id,
+            'lote' => $this->whenLoaded('lote', fn () => $this->lote ? ['id' => $this->lote->id, 'nome' => $this->lote->nome] : null),
             'tipo' => $this->tipo->value,
             'tipo_label' => $this->tipo->label(),
             'data_movimento' => $this->data_movimento->toDateString(),
@@ -34,6 +36,9 @@ class MovimentoEstoqueResource extends JsonResource
             $this->mergeWhen($gestor, fn () => [
                 'valor_unitario' => $this->valor_unitario === null ? null : (float) $this->valor_unitario,
                 'valor_total' => $this->valor_unitario === null ? null : round((float) $this->quantidade * (float) $this->valor_unitario, 2),
+                // Na saída, o custo pelo preço do item no dia.
+                'custo_unitario' => $this->custo_unitario === null ? null : (float) $this->custo_unitario,
+                'custo_total' => $this->custo_unitario === null ? null : round((float) $this->quantidade * (float) $this->custo_unitario, 2),
             ]),
         ];
     }

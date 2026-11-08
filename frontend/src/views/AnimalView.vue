@@ -1,6 +1,6 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { ArrowLeft, CalendarClock, HeartPulse, Mars, Milk, Scale, Syringe, TriangleAlert, Venus } from '@lucide/vue'
+import { ArrowLeft, Boxes, CalendarClock, HeartPulse, Mars, Milk, Scale, Syringe, Target, TrendingDown, TrendingUp, TriangleAlert, Venus } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -16,26 +16,35 @@ import AvatarAnimal from '../components/AvatarAnimal.vue'
 import FormAplicacaoSanitaria from '../components/FormAplicacaoSanitaria.vue'
 import FormEventoReprodutivo from '../components/FormEventoReprodutivo.vue'
 import GaleriaFotos from '../components/GaleriaFotos.vue'
+import GraficoPeso from '../components/GraficoPeso.vue'
 import LinhaDoTempo from '../components/LinhaDoTempo.vue'
 import CabecalhoPagina from '../components/layout/CabecalhoPagina.vue'
 import { useEnvio } from '../composables/useEnvio'
 import { turnoAtual } from '../composables/usePeriodoAtual'
 import { useDataMinima } from '../composables/useDataMinima'
-import { dataBr, hoje, idade, novoUuid } from '../formatos'
+import { useSessao } from '../composables/useSessao'
+import { dataBr, hoje, idade, novoUuid, numero } from '../formatos'
 import { avisarGuardadoOffline, enviarOuGuardar } from '../offline/fila'
 
 const props = defineProps({ id: { type: String, required: true } })
 
 const animal = ref(null)
+const { ehGestor } = useSessao()
 const dataMinima = useDataMinima()
 const timeline = ref([])
+const crescimento = ref(null)
 const erroCarga = ref([])
 
 async function carregar() {
   try {
-    const [a, t] = await Promise.all([http.get(`/animais/${props.id}`), http.get(`/animais/${props.id}/timeline`)])
+    const [a, t, c] = await Promise.all([
+      http.get(`/animais/${props.id}`),
+      http.get(`/animais/${props.id}/timeline`),
+      http.get(`/animais/${props.id}/crescimento`).catch(() => null), // sem conexão e sem cache: a ficha abre mesmo assim
+    ])
     animal.value = a.data.data
     timeline.value = t.data.data
+    crescimento.value = c?.data.data ?? null
     erroCarga.value = []
   } catch (e) {
     erroCarga.value = e.mensagens
@@ -59,6 +68,21 @@ const projecoes = computed(() => animal.value && [
   ['Secagem prevista', animal.value.data_prevista_secagem],
   ['Parto provável', animal.value.data_provavel_parto],
 ].filter(([, v]) => v))
+
+// Crescimento: tendência das pesagens recentes, projeção e previsão para o peso alvo.
+const tend = computed(() => crescimento.value?.tendencia)
+const graficoPeso = computed(() => {
+  const c = crescimento.value
+  if (!c?.pesagens.length) return null
+  const t = c.tendencia
+  return {
+    pontos: c.pesagens,
+    reta: t.reta,
+    projecao: t.projetavel ? [{ data: hoje(), peso: t.peso_estimado_hoje, margem: 0 }, ...t.projecoes] : [],
+    alvo: { peso: c.alvo.peso_kg, data: c.meta?.data_alvo, rotulo: c.alvo.origem === 'META_LOTE' ? 'Meta do lote' : 'Peso de abate' },
+  }
+})
+const TOM_TENDENCIA = { CONFIAVEL: 'text-emerald-700 dark:text-emerald-400', INSTAVEL: 'text-amber-700 dark:text-amber-400', IRREGULAR: 'text-destructive', INSUFICIENTE: 'text-muted-foreground' }
 
 // Lançamentos rápidos
 const modal = ref(null)
@@ -142,6 +166,66 @@ function aplicacaoSalva(aplicacao) {
         <AlertTitle>Alerta crítico de carência</AlertTitle>
         <AlertDescription>{{ animal.alerta.mensagem }}</AlertDescription>
       </Alert>
+
+      <Card v-if="graficoPeso">
+        <CardHeader class="flex flex-wrap items-start justify-between gap-2">
+          <CardTitle class="flex items-center gap-2"><Scale class="size-4" /> Crescimento</CardTitle>
+          <component :is="ehGestor ? 'RouterLink' : 'span'" v-if="crescimento.lote" :to="ehGestor ? `/lotes?lote=${crescimento.lote.id}` : undefined"
+                     class="flex items-center gap-1.5 text-sm text-muted-foreground" :class="{ 'hover:text-foreground': ehGestor }">
+            <Boxes class="size-4" /> {{ crescimento.lote.nome }}
+          </component>
+        </CardHeader>
+        <CardContent class="space-y-4">
+          <dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div class="rounded-lg border p-3">
+              <dt class="text-xs text-muted-foreground">GMD de tendência</dt>
+              <dd class="flex items-center gap-1.5 text-xl font-semibold tabular-nums">
+                <template v-if="tend.gmd !== null">
+                  <component :is="tend.gmd > 0 ? TrendingUp : TrendingDown" class="size-4" :class="tend.gmd > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'" />
+                  {{ numero(tend.gmd, 3) }} <span class="text-xs font-normal text-muted-foreground">kg/dia</span>
+                </template>
+                <template v-else>—</template>
+              </dd>
+              <dd class="text-xs" :class="TOM_TENDENCIA[tend.situacao]">
+                {{ tend.situacao_label }}<template v-if="tend.r2 !== null"> · R² {{ numero(tend.r2, 2) }}</template>
+              </dd>
+            </div>
+            <div class="rounded-lg border p-3">
+              <dt class="text-xs text-muted-foreground">{{ tend.peso_estimado_hoje !== null ? 'Peso estimado hoje' : 'Última pesagem' }}</dt>
+              <dd class="text-xl font-semibold tabular-nums">{{ numero(tend.peso_estimado_hoje ?? tend.ultima_pesagem?.peso, 1) }} <span class="text-xs font-normal text-muted-foreground">kg</span></dd>
+              <dd class="text-xs text-muted-foreground">{{ tend.pesagens_usadas }} pesagem(ns) nos últimos 120 dias</dd>
+            </div>
+            <div class="rounded-lg border p-3">
+              <dt class="text-xs text-muted-foreground">Em 90 dias</dt>
+              <dd class="text-xl font-semibold tabular-nums">
+                <template v-if="tend.projecoes.length">{{ numero(tend.projecoes.at(-1).peso, 0) }} <span class="text-xs font-normal text-muted-foreground">kg</span></template>
+                <template v-else>—</template>
+              </dd>
+              <dd class="text-xs text-muted-foreground">
+                <template v-if="tend.projecoes.at(-1)?.margem">± {{ numero(tend.projecoes.at(-1).margem, 0) }} kg</template>
+                <template v-else-if="!tend.projetavel">Sem projeção: {{ tend.situacao_label.toLowerCase() }}</template>
+              </dd>
+            </div>
+            <div class="rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <dt class="flex items-center gap-1 text-xs text-muted-foreground"><Target class="size-3.5" /> {{ crescimento.alvo.origem === 'META_LOTE' ? 'Meta do lote' : 'Peso de abate' }}: {{ numero(crescimento.alvo.peso_kg, 0) }} kg</dt>
+              <dd class="text-xl font-semibold">
+                <template v-if="crescimento.alvo.previsao?.dias === 0">Atingido</template>
+                <template v-else-if="crescimento.alvo.previsao">{{ dataBr(crescimento.alvo.previsao.data) }}</template>
+                <template v-else>—</template>
+              </dd>
+              <dd class="text-xs text-muted-foreground">
+                <template v-if="crescimento.alvo.previsao?.dias">em {{ crescimento.alvo.previsao.dias }} dias no ritmo atual</template>
+                <template v-else-if="!crescimento.alvo.previsao">Não atinge no ritmo atual</template>
+              </dd>
+            </div>
+          </dl>
+          <p v-if="tend.suspeitas.length" class="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <TriangleAlert class="mt-0.5 size-3.5 shrink-0" />
+            {{ tend.suspeitas.length }} pesagem(ns) fora da tendência ficaram fora da conta. Confira se o peso foi digitado certo.
+          </p>
+          <GraficoPeso v-bind="graficoPeso" />
+        </CardContent>
+      </Card>
 
       <div class="grid gap-4 lg:grid-cols-3">
         <div class="space-y-4">
