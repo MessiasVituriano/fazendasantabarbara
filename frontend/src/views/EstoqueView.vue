@@ -1,9 +1,9 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, CalendarX, History, Package, Pencil, Plus, Search, Wallet } from '@lucide/vue'
+import { useTransition } from '@vueuse/core'
+import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, CalendarClock, CalendarX, Gauge, History, Package, Pencil, Plus, Search, Wallet } from '@lucide/vue'
 import { toast } from 'vue-sonner'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -142,11 +142,73 @@ function verHistorico(item) {
   aba.value = 'movimentos'
 }
 
-const ESTILO_MOV = {
-  ENTRADA: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
-  SAIDA: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
-  AJUSTE: 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300',
+const ESTILO_MOV = { ENTRADA: 'lua-badge--success', SAIDA: 'lua-badge--warning', AJUSTE: 'lua-badge--info' }
+
+// ---------------- Painéis dinâmicos (só leitura, calculados dos itens já carregados) ----------------
+/** "Hoje" reativo: os prazos se atualizam sozinhos na virada do dia com a tela aberta. */
+const dataHoje = ref(hoje())
+const relogio = setInterval(() => { dataHoje.value = hoje() }, 60_000)
+onUnmounted(() => clearInterval(relogio))
+
+/** Barras começam vazias e crescem até o valor depois da primeira carga. */
+const animar = ref(false)
+watch(itensAtivos, () => requestAnimationFrame(() => { animar.value = true }), { once: true })
+
+const DIA = 86_400_000
+const utc = (iso) => { const [a, m, d] = iso.slice(0, 10).split('-').map(Number); return Date.UTC(a, m - 1, d) }
+const plural = (n, um, varios) => `${n} ${n === 1 ? um : varios}`
+
+/** Prazo de validade legível e com tom: segue a situação calculada pelo servidor. */
+function prazo(i) {
+  if (!i.data_validade) return null
+  const dias = Math.round((utc(i.data_validade) - utc(dataHoje.value)) / DIA)
+  const tom = i.situacao_validade === 'VENCIDO' ? 'danger' : i.situacao_validade === 'VENCE_EM_BREVE' ? 'warning' : 'success'
+  let texto
+  if (dias < 0) texto = `Vencido há ${plural(-dias, 'dia', 'dias')}`
+  else if (dias === 0) texto = 'Vence hoje'
+  else if (dias === 1) texto = 'Vence amanhã'
+  else if (dias <= 60) texto = `Vence em ${dias} dias`
+  else texto = `Vence em ${plural(Math.round(dias / 30), 'mês', 'meses')}`
+  // Barra: quanto do prazo de aviso ainda resta (cheia = folgado, vazia = vencido).
+  const janela = Math.max(diasAviso.value * 3, 1)
+  const resta = Math.max(0, Math.min(1, dias / janela))
+  return { dias, texto, tom, resta }
 }
+
+/** Nível do saldo frente ao mínimo: escala em 3× o mínimo, com marcador do mínimo. */
+function nivel(i) {
+  const minimo = Number(i.estoque_minimo) || 0
+  const saldo = Number(i.saldo) || 0
+  const tom = saldo <= 0 || i.abaixo_minimo ? 'danger' : minimo && saldo <= minimo * 1.5 ? 'warning' : 'success'
+  if (!minimo) return { tom, pct: null, marca: null }
+  const escala = Math.max(saldo, minimo * 3)
+  return { tom, pct: saldo / escala, marca: minimo / escala }
+}
+
+const proximasValidades = computed(() => itensAtivos.value
+  .filter((i) => i.data_validade)
+  .map((i) => ({ item: i, p: prazo(i) }))
+  .sort((a, b) => a.p.dias - b.p.dias)
+  .slice(0, 6))
+const contagemValidade = computed(() => {
+  const c = { danger: 0, warning: 0, success: 0, sem: 0 }
+  for (const i of itensAtivos.value) { const p = prazo(i); p ? c[p.tom]++ : c.sem++ }
+  return c
+})
+
+const niveisCriticos = computed(() => itensAtivos.value
+  .filter((i) => Number(i.estoque_minimo) > 0)
+  .map((i) => ({ item: i, n: nivel(i), razao: Number(i.saldo) / Number(i.estoque_minimo) }))
+  .sort((a, b) => a.razao - b.razao)
+  .slice(0, 6))
+const semEstoque = computed(() => itensAtivos.value.filter((i) => Number(i.saldo) <= 0).length)
+
+// Contadores dos cartões sobem animados até o valor.
+const animado = (fonte) => useTransition(fonte, { duration: 650 })
+const kpiItens = animado(computed(() => resumo.value?.itens ?? 0))
+const kpiRepor = animado(computed(() => resumo.value?.repor ?? 0))
+const kpiValidade = animado(computed(() => (resumo.value?.vencidos ?? 0) + (resumo.value?.vencendo ?? 0)))
+const kpiValor = animado(computed(() => resumo.value?.valor_total ?? 0))
 
 // ---------------- Diálogo: movimento ----------------
 const movAberto = ref(false)
@@ -240,6 +302,7 @@ async function cancelarMovimento() {
 </script>
 
 <template>
+ <div class="lua-estoque min-h-screen">
   <CabecalhoPagina titulo="Estoque" :contador="aba === 'itens' ? itens.length : total">
     <template #acoes>
       <Button variant="outline" @click="abrirMovimento('SAIDA')"><ArrowUpFromLine /> Saída</Button>
@@ -293,33 +356,108 @@ async function cancelarMovimento() {
   <main class="space-y-4 px-4 py-6 md:px-6">
     <AlertaErros :mensagens="erroCarga" />
 
+    <div class="flex flex-wrap items-end justify-between gap-2">
+      <div>
+        <p class="lua-eyebrow">Gestão de estoque</p>
+        <h2 class="lua-page-title">{{ aba === 'itens' ? 'Saldos e validades' : 'Histórico de movimentações' }}</h2>
+        <p class="lua-page-subtitle">Medicamentos, vacinas, ração e demais insumos da fazenda</p>
+      </div>
+      <p class="lua-page-subtitle tabular-nums">Hoje, {{ dataBr(dataHoje) }}</p>
+    </div>
+
     <!-- ITENS -->
     <template v-if="aba === 'itens'">
       <div v-if="resumo" class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <button class="rounded-xl border bg-card p-4 text-left transition hover:shadow-sm" :class="{ 'ring-2 ring-primary': filtros.alerta === TODOS }" @click="filtros.alerta = TODOS">
-          <p class="flex items-center gap-1.5 text-xs text-muted-foreground"><Package class="size-3.5" /> Itens ativos</p>
-          <p class="mt-1 text-2xl font-semibold tabular-nums">{{ resumo.itens }}</p>
+        <button class="lua-kpi lua-kpi--botao" :class="{ 'lua-kpi--ativo': filtros.alerta === TODOS }" @click="filtros.alerta = TODOS">
+          <span class="lua-kpi-label"><Package class="size-3.5 lua-tom--primary" /> Itens ativos</span>
+          <span class="lua-kpi-value tabular-nums">{{ Math.round(kpiItens) }}</span>
+          <span class="lua-kpi-sub">{{ contagemValidade.sem }} sem validade informada</span>
         </button>
-        <button class="rounded-xl border bg-card p-4 text-left transition hover:shadow-sm" :class="{ 'ring-2 ring-primary': filtros.alerta === 'REPOR' }" @click="alternarAlerta('REPOR')">
-          <p class="flex items-center gap-1.5 text-xs text-muted-foreground"><AlertTriangle class="size-3.5" /> Para repor</p>
-          <p class="mt-1 text-2xl font-semibold tabular-nums" :class="{ 'text-destructive': resumo.repor }">{{ resumo.repor }}</p>
+        <button class="lua-kpi lua-kpi--botao" :class="{ 'lua-kpi--ativo': filtros.alerta === 'REPOR', 'lua-kpi--alerta': resumo.repor }" @click="alternarAlerta('REPOR')">
+          <span class="lua-kpi-label"><AlertTriangle class="size-3.5 lua-tom--danger" /> Para repor</span>
+          <span class="lua-kpi-value tabular-nums" :class="{ 'lua-tom--danger': resumo.repor }">{{ Math.round(kpiRepor) }}</span>
+          <span class="lua-kpi-sub">{{ semEstoque }} sem estoque</span>
         </button>
-        <button class="rounded-xl border bg-card p-4 text-left transition hover:shadow-sm" :class="{ 'ring-2 ring-primary': filtros.alerta === 'VALIDADE' }" @click="alternarAlerta('VALIDADE')">
-          <p class="flex items-center gap-1.5 text-xs text-muted-foreground"><CalendarX class="size-3.5" /> Validade</p>
-          <p class="mt-1 text-2xl font-semibold tabular-nums" :class="{ 'text-destructive': resumo.vencidos }">
-            {{ resumo.vencidos + resumo.vencendo }}
-          </p>
-          <p class="text-xs text-muted-foreground">{{ resumo.vencidos }} vencido(s) · {{ resumo.vencendo }} em {{ diasAviso }} dias</p>
+        <button class="lua-kpi lua-kpi--botao" :class="{ 'lua-kpi--ativo': filtros.alerta === 'VALIDADE', 'lua-kpi--alerta': resumo.vencidos }" @click="alternarAlerta('VALIDADE')">
+          <span class="lua-kpi-label"><CalendarX class="size-3.5 lua-tom--warning" /> Validade</span>
+          <span class="lua-kpi-value tabular-nums" :class="{ 'lua-tom--danger': resumo.vencidos }">{{ Math.round(kpiValidade) }}</span>
+          <span class="lua-kpi-sub">{{ resumo.vencidos }} vencido(s) · {{ resumo.vencendo }} em {{ diasAviso }} dias</span>
         </button>
-        <div v-if="ehGestor" class="rounded-xl border bg-card p-4">
-          <p class="flex items-center gap-1.5 text-xs text-muted-foreground"><Wallet class="size-3.5" /> Valor em estoque</p>
-          <p class="mt-1 text-2xl font-semibold tabular-nums">{{ moeda(resumo.valor_total) }}</p>
-          <p class="text-xs text-muted-foreground">pelo preço da última entrada</p>
+        <div v-if="ehGestor" class="lua-kpi">
+          <span class="lua-kpi-label"><Wallet class="size-3.5 lua-tom--success" /> Valor em estoque</span>
+          <span class="lua-kpi-value tabular-nums">{{ moeda(kpiValor) }}</span>
+          <span class="lua-kpi-sub">pelo preço da última entrada</span>
         </div>
       </div>
 
+      <!-- Painéis vivos: prazos de validade e níveis frente ao mínimo -->
+      <div v-if="itensAtivos.length" class="grid gap-3 lg:grid-cols-2">
+        <section class="lua-card">
+          <header class="lua-card-header">
+            <div>
+              <h3 class="lua-section-title"><CalendarClock class="size-4 lua-tom--primary" /> Próximas validades</h3>
+              <p class="lua-section-subtitle">Ordenadas pelo vencimento mais próximo</p>
+            </div>
+            <div class="flex flex-wrap justify-end gap-1">
+              <span v-if="contagemValidade.danger" class="lua-badge lua-badge--danger tabular-nums">{{ contagemValidade.danger }} vencido(s)</span>
+              <span v-if="contagemValidade.warning" class="lua-badge lua-badge--warning tabular-nums">{{ contagemValidade.warning }} perto</span>
+              <span class="lua-badge lua-badge--success tabular-nums">{{ contagemValidade.success }} em dia</span>
+            </div>
+          </header>
+          <TransitionGroup v-if="proximasValidades.length" tag="ul" name="lua-lista" class="lua-lista">
+            <li v-for="{ item: i, p } in proximasValidades" :key="i.id" class="lua-linha">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-baseline justify-between gap-2">
+                  <p class="truncate text-sm font-medium">{{ i.nome }}</p>
+                  <span class="lua-badge shrink-0" :class="`lua-badge--${p.tom}`">{{ p.texto }}</span>
+                </div>
+                <div class="lua-meter mt-1.5" :title="`Validade ${dataBr(i.data_validade)}`">
+                  <div class="lua-meter-fill" :class="`lua-fill--${p.tom}`" :style="{ width: `${animar ? Math.max(p.resta * 100, p.dias < 0 ? 100 : 3) : 0}%` }" />
+                </div>
+                <p class="mt-1 text-xs text-muted-foreground tabular-nums">{{ dataBr(i.data_validade) }} · {{ qtd(i.saldo) }} {{ i.unidade_sigla }}<template v-if="i.localizacao"> · {{ i.localizacao }}</template></p>
+              </div>
+            </li>
+          </TransitionGroup>
+          <p v-else class="px-4 py-6 text-sm text-muted-foreground">Nenhum item com validade informada.</p>
+          <button v-if="resumo && resumo.vencidos + resumo.vencendo" class="lua-card-footer" @click="alternarAlerta('VALIDADE')">
+            {{ filtros.alerta === 'VALIDADE' ? 'Mostrar todos os itens' : 'Filtrar itens com alerta de validade' }}
+          </button>
+        </section>
+
+        <section class="lua-card">
+          <header class="lua-card-header">
+            <div>
+              <h3 class="lua-section-title"><Gauge class="size-4 lua-tom--primary" /> Níveis de estoque</h3>
+              <p class="lua-section-subtitle">Saldo frente ao mínimo, do mais crítico ao mais folgado</p>
+            </div>
+            <span v-if="resumo?.repor" class="lua-badge lua-badge--danger tabular-nums">{{ resumo.repor }} para repor</span>
+          </header>
+          <TransitionGroup v-if="niveisCriticos.length" tag="ul" name="lua-lista" class="lua-lista">
+            <li v-for="{ item: i, n } in niveisCriticos" :key="i.id" class="lua-linha">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-baseline justify-between gap-2">
+                  <p class="truncate text-sm font-medium">{{ i.nome }}</p>
+                  <p class="shrink-0 text-sm tabular-nums">
+                    <span class="font-semibold" :class="`lua-tom--${n.tom}`">{{ qtd(i.saldo) }}</span>
+                    <span class="text-xs text-muted-foreground"> / mín. {{ qtd(i.estoque_minimo) }} {{ i.unidade_sigla }}</span>
+                  </p>
+                </div>
+                <div class="lua-meter mt-1.5">
+                  <div class="lua-meter-fill" :class="`lua-fill--${n.tom}`" :style="{ width: `${animar ? n.pct * 100 : 0}%` }" />
+                  <div class="lua-meter-marca" :style="{ left: `${n.marca * 100}%` }" title="Estoque mínimo" />
+                </div>
+              </div>
+            </li>
+          </TransitionGroup>
+          <p v-else class="px-4 py-6 text-sm text-muted-foreground">Nenhum item com estoque mínimo definido.</p>
+          <button v-if="resumo?.repor" class="lua-card-footer" @click="alternarAlerta('REPOR')">
+            {{ filtros.alerta === 'REPOR' ? 'Mostrar todos os itens' : 'Filtrar itens para repor' }}
+          </button>
+        </section>
+      </div>
+
       <!-- celular: cartões com saldo, alertas e ações à vista -->
-      <ul class="divide-y rounded-xl border bg-card md:hidden" :class="{ 'opacity-50': carregandoItens }">
+      <ul class="lua-card divide-y md:hidden" :class="{ 'opacity-50': carregandoItens }">
         <li v-for="i in itens" :key="i.id" class="space-y-2 px-4 py-3" :class="{ 'opacity-60': !i.ativo }">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
@@ -327,16 +465,19 @@ async function cancelarMovimento() {
               <p class="text-xs text-muted-foreground">{{ [i.tipo_label, i.localizacao].filter(Boolean).join(' · ') }}</p>
             </div>
             <p class="shrink-0 text-right tabular-nums">
-              <span class="text-lg font-semibold" :class="{ 'text-destructive': i.abaixo_minimo }">{{ qtd(i.saldo) }}</span>
+              <span class="text-lg font-semibold" :class="{ 'lua-tom--danger': i.abaixo_minimo }">{{ qtd(i.saldo) }}</span>
               <span class="ml-1 text-xs text-muted-foreground">{{ i.unidade_sigla }}</span>
               <span v-if="i.estoque_minimo" class="block text-xs text-muted-foreground">mín. {{ qtd(i.estoque_minimo) }}</span>
             </p>
           </div>
+          <div v-if="nivel(i).pct != null" class="lua-meter">
+            <div class="lua-meter-fill" :class="`lua-fill--${nivel(i).tom}`" :style="{ width: `${animar ? nivel(i).pct * 100 : 0}%` }" />
+            <div class="lua-meter-marca" :style="{ left: `${nivel(i).marca * 100}%` }" />
+          </div>
           <div class="flex flex-wrap items-center gap-1.5">
-            <Badge v-if="!i.ativo" variant="outline">Desativado</Badge>
-            <Badge v-if="i.abaixo_minimo" variant="destructive">{{ i.saldo > 0 ? 'Repor' : 'Sem estoque' }}</Badge>
-            <Badge v-if="i.situacao_validade === 'VENCIDO'" variant="destructive">Vencido em {{ dataBr(i.data_validade) }}</Badge>
-            <Badge v-else-if="i.situacao_validade === 'VENCE_EM_BREVE'" class="border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">Vence {{ dataBr(i.data_validade) }}</Badge>
+            <span v-if="!i.ativo" class="lua-badge lua-badge--neutral">Desativado</span>
+            <span v-if="i.abaixo_minimo" class="lua-badge lua-badge--danger">{{ i.saldo > 0 ? 'Repor' : 'Sem estoque' }}</span>
+            <span v-if="prazo(i)" class="lua-badge" :class="`lua-badge--${prazo(i).tom}`" :title="`Validade ${dataBr(i.data_validade)}`">{{ prazo(i).texto }}</span>
             <span v-if="ehGestor && i.valor_estoque != null" class="text-xs text-muted-foreground tabular-nums">{{ moeda(i.valor_estoque) }}</span>
             <div class="ml-auto flex">
               <template v-if="i.ativo">
@@ -351,35 +492,50 @@ async function cancelarMovimento() {
         <li v-if="!itens.length && !carregandoItens" class="px-4 py-3 text-sm text-muted-foreground">Nenhum item encontrado.</li>
       </ul>
 
-      <div class="hidden overflow-x-auto rounded-xl border bg-card md:block" :class="{ 'opacity-50': carregandoItens }">
+      <div class="lua-card hidden overflow-x-auto md:block" :class="{ 'opacity-50': carregandoItens }">
+        <header class="lua-card-header">
+          <h3 class="lua-section-title">{{ plural(itens.length, 'item', 'itens') }}</h3>
+          <span v-if="filtros.alerta !== TODOS" class="lua-badge lua-badge--primary">{{ filtros.alerta === 'REPOR' ? 'Para repor' : 'Alerta de validade' }}</span>
+        </header>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Item</TableHead>
               <TableHead class="text-right">Saldo</TableHead>
-              <TableHead class="text-right">Mínimo</TableHead>
+              <TableHead class="w-44">Nível</TableHead>
               <TableHead>Validade</TableHead>
               <TableHead v-if="ehGestor" class="text-right">Valor</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
-            <TableRow v-for="i in itens" :key="i.id" :class="{ 'opacity-60': !i.ativo }">
+            <TableRow v-for="i in itens" :key="i.id" :class="{ 'opacity-60': !i.ativo, 'lua-row--danger': i.abaixo_minimo && i.ativo }">
               <TableCell>
                 <p class="font-medium">{{ i.nome }}</p>
                 <p class="text-xs text-muted-foreground">{{ [i.tipo_label, i.localizacao].filter(Boolean).join(' · ') }}</p>
-                <Badge v-if="!i.ativo" variant="outline" class="mt-0.5">Desativado</Badge>
+                <span v-if="!i.ativo" class="lua-badge lua-badge--neutral mt-0.5">Desativado</span>
               </TableCell>
               <TableCell class="text-right whitespace-nowrap tabular-nums">
-                <span class="font-semibold" :class="{ 'text-destructive': i.abaixo_minimo }">{{ qtd(i.saldo) }}</span>
+                <span class="font-semibold" :class="{ 'lua-tom--danger': i.abaixo_minimo }">{{ qtd(i.saldo) }}</span>
                 <span class="ml-1 text-xs text-muted-foreground">{{ i.unidade_sigla }}</span>
-                <p v-if="i.abaixo_minimo"><Badge variant="destructive" class="mt-0.5">{{ i.saldo > 0 ? 'Repor' : 'Sem estoque' }}</Badge></p>
+                <p v-if="i.abaixo_minimo"><span class="lua-badge lua-badge--danger mt-0.5">{{ i.saldo > 0 ? 'Repor' : 'Sem estoque' }}</span></p>
               </TableCell>
-              <TableCell class="text-right text-sm whitespace-nowrap text-muted-foreground tabular-nums">{{ i.estoque_minimo ? `${qtd(i.estoque_minimo)} ${i.unidade_sigla}` : '—' }}</TableCell>
+              <TableCell>
+                <template v-if="nivel(i).pct != null">
+                  <div class="lua-meter">
+                    <div class="lua-meter-fill" :class="`lua-fill--${nivel(i).tom}`" :style="{ width: `${animar ? nivel(i).pct * 100 : 0}%` }" />
+                    <div class="lua-meter-marca" :style="{ left: `${nivel(i).marca * 100}%` }" title="Estoque mínimo" />
+                  </div>
+                  <p class="mt-1 text-xs text-muted-foreground tabular-nums">mín. {{ qtd(i.estoque_minimo) }} {{ i.unidade_sigla }}</p>
+                </template>
+                <span v-else class="text-xs text-muted-foreground">Sem mínimo</span>
+              </TableCell>
               <TableCell class="whitespace-nowrap">
-                <Badge v-if="i.situacao_validade === 'VENCIDO'" variant="destructive">Vencido em {{ dataBr(i.data_validade) }}</Badge>
-                <Badge v-else-if="i.situacao_validade === 'VENCE_EM_BREVE'" class="border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">Vence {{ dataBr(i.data_validade) }}</Badge>
-                <span v-else class="text-sm text-muted-foreground tabular-nums">{{ dataBr(i.data_validade) }}</span>
+                <template v-if="prazo(i)">
+                  <span class="lua-badge" :class="`lua-badge--${prazo(i).tom}`">{{ prazo(i).texto }}</span>
+                  <p class="mt-0.5 text-xs text-muted-foreground tabular-nums">{{ dataBr(i.data_validade) }}</p>
+                </template>
+                <span v-else class="text-sm text-muted-foreground">—</span>
               </TableCell>
               <TableCell v-if="ehGestor" class="text-right text-sm whitespace-nowrap tabular-nums">
                 {{ moeda(i.valor_estoque) }}
@@ -407,19 +563,19 @@ async function cancelarMovimento() {
     <!-- MOVIMENTAÇÕES -->
     <template v-else>
       <!-- celular: cartões com a quantidade em destaque -->
-      <ul class="divide-y rounded-xl border bg-card md:hidden" :class="{ 'opacity-50': carregandoMov }">
+      <ul class="lua-card divide-y md:hidden" :class="{ 'opacity-50': carregandoMov }">
         <li v-for="m in movimentos" :key="m.id" class="space-y-1 px-4 py-3" :class="{ 'opacity-60': m.cancelado }">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
               <p class="font-medium" :class="{ 'line-through': m.cancelado }">{{ m.item?.nome }}</p>
               <p class="text-xs text-muted-foreground tabular-nums">{{ dataBr(m.data_movimento) }}<template v-if="m.usuario"> · {{ m.usuario }}</template></p>
             </div>
-            <p class="shrink-0 text-right font-semibold tabular-nums" :class="m.efeito_no_saldo < 0 ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'">
+            <p class="shrink-0 text-right font-semibold tabular-nums" :class="m.efeito_no_saldo < 0 ? 'lua-tom--warning' : 'lua-tom--success'">
               {{ m.efeito_no_saldo > 0 ? '+' : '' }}{{ qtd(m.efeito_no_saldo) }}<span class="ml-1 text-xs font-normal text-muted-foreground">{{ m.item?.unidade_sigla }}</span>
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <Badge class="border-transparent" :class="ESTILO_MOV[m.tipo]">{{ m.tipo_label }}</Badge>
+            <span class="lua-badge" :class="ESTILO_MOV[m.tipo]">{{ m.tipo_label }}</span>
             <span v-if="ehGestor && m.valor_total != null" class="text-xs text-muted-foreground tabular-nums">{{ moeda(m.valor_total) }}</span>
             <Button v-if="ehGestor && !m.cancelado" variant="ghost" size="sm" class="ml-auto text-destructive" @click="abrirCancelamento(m)">Cancelar</Button>
           </div>
@@ -429,7 +585,10 @@ async function cancelarMovimento() {
         <li v-if="!movimentos.length && !carregandoMov" class="px-4 py-3 text-sm text-muted-foreground">Nenhuma movimentação encontrada.</li>
       </ul>
 
-      <div class="hidden overflow-x-auto rounded-xl border bg-card md:block" :class="{ 'opacity-50': carregandoMov }">
+      <div class="lua-card hidden overflow-x-auto md:block" :class="{ 'opacity-50': carregandoMov }">
+        <header class="lua-card-header">
+          <h3 class="lua-section-title">{{ plural(total, 'movimentação', 'movimentações') }}</h3>
+        </header>
         <Table>
           <TableHeader>
             <TableRow>
@@ -445,11 +604,11 @@ async function cancelarMovimento() {
               <TableCell class="text-sm whitespace-nowrap tabular-nums">{{ dataBr(m.data_movimento) }}</TableCell>
               <TableCell class="font-medium" :class="{ 'line-through': m.cancelado }">{{ m.item?.nome }}</TableCell>
               <TableCell class="whitespace-nowrap">
-                <Badge class="border-transparent" :class="ESTILO_MOV[m.tipo]">{{ m.tipo_label }}</Badge>
+                <span class="lua-badge" :class="ESTILO_MOV[m.tipo]">{{ m.tipo_label }}</span>
                 <p v-if="m.cancelado" class="mt-0.5 text-xs text-destructive">Cancelado: {{ m.motivo_cancelamento }}</p>
               </TableCell>
-              <TableCell class="text-right whitespace-nowrap tabular-nums" :class="m.efeito_no_saldo < 0 ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'">
-                {{ m.efeito_no_saldo > 0 ? '+' : '' }}{{ qtd(m.efeito_no_saldo) }}<span class="ml-1 text-xs text-muted-foreground">{{ m.item?.unidade_sigla }}</span>
+              <TableCell class="text-right font-semibold whitespace-nowrap tabular-nums" :class="m.efeito_no_saldo < 0 ? 'lua-tom--warning' : 'lua-tom--success'">
+                {{ m.efeito_no_saldo > 0 ? '+' : '' }}{{ qtd(m.efeito_no_saldo) }}<span class="ml-1 text-xs font-normal text-muted-foreground">{{ m.item?.unidade_sigla }}</span>
               </TableCell>
               <TableCell v-if="ehGestor" class="text-right text-sm whitespace-nowrap tabular-nums">
                 {{ moeda(m.valor_total) }}
@@ -479,7 +638,7 @@ async function cancelarMovimento() {
 
   <!-- Diálogo: entrada / saída / ajuste -->
   <Dialog v-model:open="movAberto">
-    <DialogContent class="sm:max-w-lg">
+    <DialogContent class="lua-estoque lua-dialogo sm:max-w-lg">
       <DialogHeader>
         <DialogTitle>Movimentar estoque</DialogTitle>
         <DialogDescription>
@@ -543,7 +702,7 @@ async function cancelarMovimento() {
 
   <!-- Diálogo: item -->
   <Dialog v-model:open="itemAberto">
-    <DialogContent class="sm:max-w-lg">
+    <DialogContent class="lua-estoque lua-dialogo sm:max-w-lg">
       <DialogHeader>
         <DialogTitle>{{ itemEditando ? 'Editar item' : 'Novo item' }}</DialogTitle>
         <DialogDescription>O saldo não é digitado aqui: ele muda pelas entradas, saídas e ajustes.</DialogDescription>
@@ -605,7 +764,7 @@ async function cancelarMovimento() {
 
   <!-- Diálogo: cancelar movimento -->
   <Dialog :open="!!cancelando" @update:open="(v) => !v && (cancelando = null)">
-    <DialogContent class="sm:max-w-md">
+    <DialogContent class="lua-estoque lua-dialogo sm:max-w-md">
       <DialogHeader>
         <DialogTitle>Cancelar movimento?</DialogTitle>
         <DialogDescription v-if="cancelando">
@@ -625,4 +784,198 @@ async function cancelarMovimento() {
       </DialogFooter>
     </DialogContent>
   </Dialog>
+ </div>
 </template>
+
+<style>
+/*
+ * Identidade visual do Lua (neutros stone, cartões, badges suaves) aplicada à tela de Estoque,
+ * mantendo o verde da fazenda como cor primária.
+ * Os neutros do shadcn são redefinidos dentro de .lua-estoque; primário e foco seguem os do sistema. Os diálogos recebem a mesma classe.
+ */
+.lua-estoque {
+  --lua-bg: #fafaf9;
+  --lua-surface: #ffffff;
+  --lua-surface-muted: #f5f5f4;
+  --lua-border: #e7e5e4;
+  --lua-border-strong: #d6d3d1;
+  --lua-divider: #edebe9;
+  --lua-text: #1c1917;
+  --lua-text-soft: #44403c;
+  --lua-text-muted: #78716c;
+  /* Primário = verde da fazenda (tokens do sistema), no lugar do violeta do Lua. */
+  --lua-primary: var(--primary);
+  --lua-primary-soft: color-mix(in oklch, var(--primary) 10%, transparent);
+  --lua-primary-border: color-mix(in oklch, var(--primary) 35%, transparent);
+  --lua-success: #059669;
+  --lua-success-soft: #ecfdf5;
+  --lua-danger: #dc2626;
+  --lua-danger-soft: #fef2f2;
+  --lua-warning: #d97706;
+  --lua-warning-soft: #fffbeb;
+  --lua-info: #0284c7;
+  --lua-info-soft: #f0f9ff;
+  --lua-track: #f0eeec;
+  --lua-hover: #fafaf9;
+
+  --background: var(--lua-bg);
+  --foreground: var(--lua-text);
+  --card: var(--lua-surface);
+  --card-foreground: var(--lua-text);
+  --popover: var(--lua-surface);
+  --popover-foreground: var(--lua-text);
+  --secondary: var(--lua-surface-muted);
+  --secondary-foreground: var(--lua-text-soft);
+  --muted: var(--lua-surface-muted);
+  --muted-foreground: var(--lua-text-muted);
+  --accent: var(--lua-surface-muted);
+  --accent-foreground: var(--lua-text);
+  --destructive: var(--lua-danger);
+  --border: var(--lua-border);
+  --input: var(--lua-border-strong);
+
+  background: var(--lua-bg);
+  color: var(--lua-text);
+  font-feature-settings: 'cv11', 'ss01', 'ss03';
+  letter-spacing: -0.005em;
+}
+
+.dark .lua-estoque {
+  /* Neutros stone escuros (os do Lua puxam para o violeta, que aqui não é usado). */
+  --lua-bg: #0c0a09;
+  --lua-surface: #1c1917;
+  --lua-surface-muted: #262220;
+  --lua-border: #2e2a27;
+  --lua-border-strong: #44403c;
+  --lua-divider: #282422;
+  --lua-text: #f5f5f4;
+  --lua-text-soft: #d6d3d1;
+  --lua-text-muted: #a8a29e;
+  --lua-success: #34d399;
+  --lua-success-soft: rgba(16, 185, 129, 0.12);
+  --lua-danger: #f87171;
+  --lua-danger-soft: rgba(220, 38, 38, 0.15);
+  --lua-warning: #fbbf24;
+  --lua-warning-soft: rgba(217, 119, 6, 0.15);
+  --lua-info: #38bdf8;
+  --lua-info-soft: rgba(2, 132, 199, 0.15);
+  --lua-track: #2e2a27;
+  --lua-hover: rgba(255, 255, 255, 0.03);
+  --input: #44403c;
+}
+
+/* Tipografia */
+.lua-estoque .lua-eyebrow {
+  font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--lua-text-muted);
+}
+.lua-estoque .lua-page-title {
+  font-family: 'Inter Tight', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.375rem; font-weight: 600; letter-spacing: -0.022em; line-height: 1.2;
+}
+.lua-estoque .lua-page-subtitle { font-size: 0.875rem; color: var(--lua-text-muted); }
+.lua-estoque .lua-section-title {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-family: 'Inter Tight', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.01em;
+}
+.lua-estoque .lua-section-subtitle { font-size: 0.8125rem; color: var(--lua-text-muted); margin-top: 0.1rem; }
+
+/* Cartões */
+.lua-estoque .lua-card {
+  background: var(--lua-surface);
+  border: 1px solid var(--lua-border);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.02);
+  transition: opacity 0.15s;
+}
+.lua-estoque .lua-card-header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem;
+  padding: 0.875rem 1.125rem; border-bottom: 1px solid var(--lua-divider);
+}
+.lua-estoque .lua-card-footer {
+  display: block; width: 100%; padding: 0.6rem 1.125rem; text-align: left;
+  font-size: 0.8125rem; font-weight: 500; color: var(--lua-primary);
+  border-top: 1px solid var(--lua-divider); border-radius: 0 0 10px 10px; cursor: pointer;
+}
+.lua-estoque .lua-card-footer:hover { background: var(--lua-primary-soft); }
+
+/* KPIs */
+.lua-estoque .lua-kpi {
+  display: flex; flex-direction: column; gap: 0.35rem; text-align: left;
+  background: var(--lua-surface); border: 1px solid var(--lua-border); border-radius: 10px;
+  padding: 1rem 1.125rem; transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.lua-estoque .lua-kpi--botao { cursor: pointer; }
+.lua-estoque .lua-kpi--botao:hover { border-color: var(--lua-border-strong); transform: translateY(-1px); }
+.lua-estoque .lua-kpi--ativo { border-color: var(--lua-primary-border); box-shadow: 0 0 0 3px var(--lua-primary-soft); }
+.lua-estoque .lua-kpi.lua-kpi--alerta { border-left: 3px solid var(--lua-danger); }
+.lua-estoque .lua-kpi-label {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-size: 0.8125rem; font-weight: 500; color: var(--lua-text-muted);
+}
+.lua-estoque .lua-kpi-value {
+  font-family: 'Inter Tight', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;
+}
+.lua-estoque .lua-kpi-sub { font-size: 0.75rem; color: var(--lua-text-muted); }
+
+/* Cores semânticas */
+.lua-estoque .lua-tom--primary { color: var(--lua-primary); }
+.lua-estoque .lua-tom--success { color: var(--lua-success); }
+.lua-estoque .lua-tom--danger { color: var(--lua-danger); }
+.lua-estoque .lua-tom--warning { color: var(--lua-warning); }
+
+/* Badges suaves */
+.lua-estoque .lua-badge {
+  display: inline-flex; align-items: center; gap: 0.25rem; width: fit-content; white-space: nowrap;
+  font-size: 0.75rem; font-weight: 500; line-height: 1.2; letter-spacing: 0.005em;
+  padding: 0.22em 0.6em; border-radius: 6px;
+}
+.lua-estoque .lua-badge--success { background: var(--lua-success-soft); color: var(--lua-success); }
+.lua-estoque .lua-badge--danger { background: var(--lua-danger-soft); color: var(--lua-danger); }
+.lua-estoque .lua-badge--warning { background: var(--lua-warning-soft); color: var(--lua-warning); }
+.lua-estoque .lua-badge--info { background: var(--lua-info-soft); color: var(--lua-info); }
+.lua-estoque .lua-badge--primary { background: var(--lua-primary-soft); color: var(--lua-primary); }
+.lua-estoque .lua-badge--neutral { background: var(--lua-surface-muted); color: var(--lua-text-soft); border: 1px solid var(--lua-border); }
+
+/* Barras de nível / prazo */
+.lua-estoque .lua-meter {
+  position: relative; height: 6px; border-radius: 999px; background: var(--lua-track); overflow: visible;
+}
+.lua-estoque .lua-meter-fill {
+  height: 100%; border-radius: 999px; transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.3s;
+}
+.lua-estoque .lua-fill--success { background: var(--lua-success); }
+.lua-estoque .lua-fill--warning { background: var(--lua-warning); }
+.lua-estoque .lua-fill--danger { background: var(--lua-danger); }
+.lua-estoque .lua-meter-marca {
+  position: absolute; top: -3px; width: 2px; height: 12px; margin-left: -1px;
+  border-radius: 1px; background: var(--lua-text-soft); opacity: 0.55;
+}
+
+/* Listas dos painéis */
+.lua-estoque .lua-lista > * + * { border-top: 1px solid var(--lua-divider); }
+.lua-estoque .lua-linha { display: flex; gap: 0.75rem; padding: 0.7rem 1.125rem; }
+.lua-estoque .lua-linha:hover { background: var(--lua-hover); }
+.lua-lista-move, .lua-lista-enter-active, .lua-lista-leave-active { transition: all 0.35s ease; }
+.lua-lista-enter-from, .lua-lista-leave-to { opacity: 0; transform: translateY(6px); }
+.lua-lista-leave-active { position: absolute; }
+
+/* Tabelas no padrão do Lua: cabeçalho discreto em caixa alta, linhas com divisória leve */
+.lua-estoque [data-slot='table-head'] {
+  font-size: 0.75rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--lua-text-muted); padding-inline: 0.875rem;
+}
+.lua-estoque [data-slot='table-cell'] { padding: 0.7rem 0.875rem; }
+.lua-estoque [data-slot='table-row'] { border-color: var(--lua-divider); }
+.lua-estoque [data-slot='table-body'] [data-slot='table-row']:hover { background: var(--lua-hover); }
+.lua-estoque .lua-row--danger > td:first-child { box-shadow: inset 3px 0 0 var(--lua-danger); }
+
+/* Diálogos: superfície branca como os modais do Lua */
+.lua-dialogo.lua-estoque { background: var(--lua-surface); border-color: var(--lua-border); border-radius: 14px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lua-estoque .lua-meter-fill, .lua-estoque .lua-kpi, .lua-lista-move, .lua-lista-enter-active, .lua-lista-leave-active { transition: none; }
+}
+</style>
