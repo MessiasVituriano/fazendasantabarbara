@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { Milk, TriangleAlert, TrendingDown, TrendingUp, Minus } from '@lucide/vue'
+import { Beef, Flag, Milk, TriangleAlert, TrendingDown, TrendingUp, Minus } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,6 +55,11 @@ async function carregarComparativo() {
 }
 watch(periodoComparativo, carregarComparativo, { immediate: true, deep: true })
 
+// Avisos da engorda (metas, lotes sem pesagem, animais perdendo peso).
+const avisosEngorda = ref([])
+http.get('/painel/engorda').then((resp) => (avisosEngorda.value = resp.data.data)).catch(() => { /* o painel de leite segue */ })
+const destinoAviso = (a) => (a.animal_id ? `/animais/${a.animal_id}` : `/lotes?lote=${a.lote_id}`)
+
 const r = computed(() => dados.value?.resumo)
 const deltaUltimo = computed(() => {
   if (!r.value?.ultimo_dia || !r.value.media_diaria) return null
@@ -80,6 +85,22 @@ const delta = (v) => v == null ? null : {
 
   <main class="space-y-4 px-4 py-6 md:px-6">
     <AlertaErros :mensagens="erros" />
+
+    <Card v-if="avisosEngorda.length" class="gap-3 border-amber-300/60 dark:border-amber-900">
+      <CardHeader>
+        <CardTitle class="flex items-center gap-2 text-base"><Beef class="size-4" /> Engorda: {{ avisosEngorda.length }} aviso(s)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul class="space-y-2 text-sm">
+          <li v-for="(a, i) in avisosEngorda" :key="i">
+            <RouterLink :to="destinoAviso(a)" class="flex items-start gap-2 hover:underline">
+              <component :is="a.nivel === 'INFO' ? Flag : TriangleAlert" class="mt-0.5 size-4 shrink-0" :class="a.nivel === 'INFO' ? 'text-sky-600 dark:text-sky-400' : 'text-amber-600 dark:text-amber-400'" />
+              {{ a.mensagem }}
+            </RouterLink>
+          </li>
+        </ul>
+      </CardContent>
+    </Card>
 
     <template v-if="dados">
       <div class="grid gap-4 transition-opacity lg:grid-cols-[1.2fr_2fr]" :class="{ 'opacity-50': carregando }">

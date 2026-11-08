@@ -42,6 +42,10 @@ class RegistrarMovimentoEstoqueRequest extends FormRequest
             'valor_unitario' => $gestor && $this->input('tipo') === TipoMovimentoEstoque::ENTRADA->value
                 ? ['nullable', 'numeric', 'decimal:0,4', 'min:0', 'max:9999999999']
                 : ['prohibited'],
+            // Destino da saída (ração do lote, por exemplo). Entradas e ajustes não têm lote.
+            'lote_id' => $this->input('tipo') === TipoMovimentoEstoque::SAIDA->value
+                ? ['nullable', 'integer', 'exists:lotes,id']
+                : ['prohibited'],
             'observacao' => ['nullable', 'string', 'max:255'],
         ];
     }
@@ -50,6 +54,7 @@ class RegistrarMovimentoEstoqueRequest extends FormRequest
     {
         return [
             'item_estoque_id' => 'item',
+            'lote_id' => 'lote',
             'data_movimento' => 'data',
             'saldo_contado' => 'saldo contado',
             'valor_unitario' => 'valor unitário',

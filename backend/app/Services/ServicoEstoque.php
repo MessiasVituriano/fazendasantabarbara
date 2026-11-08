@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\TipoMovimentoEstoque;
 use App\Exceptions\RegraNegocioException;
 use App\Models\ItemEstoque;
+use App\Models\Lote;
 use App\Models\MovimentoEstoque;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 class ServicoEstoque
 {
     /**
-     * @param  array{item_estoque_id: int, tipo: string, data_movimento: string, quantidade?: numeric-string|float|null, saldo_contado?: numeric-string|float|null, valor_unitario?: numeric-string|float|null, observacao?: string|null, uuid?: string|null}  $dados
+     * @param  array{item_estoque_id: int, lote_id?: int|null, tipo: string, data_movimento: string, quantidade?: numeric-string|float|null, saldo_contado?: numeric-string|float|null, valor_unitario?: numeric-string|float|null, observacao?: string|null, uuid?: string|null}  $dados
      */
     public function registrar(array $dados, ?User $usuario): MovimentoEstoque
     {
@@ -38,6 +39,11 @@ class ServicoEstoque
             if ($tipo === TipoMovimentoEstoque::AJUSTE && $quantidade === 0) {
                 throw new RegraNegocioException('O saldo contado é igual ao saldo atual: não há o que ajustar.', 'AJUSTE_SEM_DIFERENCA', ponteiro: '/saldo_contado');
             }
+            $lote = $tipo === TipoMovimentoEstoque::SAIDA && ! empty($dados['lote_id']) ? Lote::findOrFail($dados['lote_id']) : null;
+            if ($lote?->data_encerramento) {
+                throw new RegraNegocioException("O {$lote->nome} está encerrado e não recebe mais saídas de estoque.", 'LOTE_ENCERRADO', ponteiro: '/lote_id');
+            }
+
             if ($tipo === TipoMovimentoEstoque::SAIDA && $quantidade > $saldo) {
                 $sigla = $item->unidade->sigla();
                 throw new RegraNegocioException(
@@ -50,10 +56,13 @@ class ServicoEstoque
             $movimento = MovimentoEstoque::create([
                 'uuid' => $dados['uuid'] ?? null,
                 'item_estoque_id' => $item->id,
+                'lote_id' => $lote?->id,
                 'tipo' => $tipo,
                 'data_movimento' => $dados['data_movimento'],
                 'quantidade' => $quantidade / 1000,
                 'valor_unitario' => $tipo === TipoMovimentoEstoque::ENTRADA ? ($dados['valor_unitario'] ?? null) : null,
+                // Custo da saída pelo preço do item hoje: compras futuras não reescrevem o custo do lote.
+                'custo_unitario' => $tipo === TipoMovimentoEstoque::SAIDA ? $item->custo_unitario : null,
                 'observacao' => $dados['observacao'] ?? null,
                 'user_id' => $usuario?->id,
             ]);

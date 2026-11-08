@@ -7,9 +7,12 @@ use App\Enums\Categoria;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AnimalResource;
 use App\Models\Animal;
+use App\Services\PainelEngorda;
+use App\Services\ProjecaoCrescimento;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
 
 /**
  * RF04 — listas de ordenha e abate com controle de carência sanitária.
@@ -23,11 +26,34 @@ class ManejoController extends Controller
         return $this->listar($request, fn (Builder $q) => $q->where('categoria', Categoria::LACTACAO));
     }
 
-    public function abate(Request $request): AnonymousResourceCollection
+    /** Inclui a tendência de peso e a previsão para o peso alvo (meta do lote ou peso de abate padrão). */
+    public function abate(Request $request, PainelEngorda $engorda, ProjecaoCrescimento $projecao): AnonymousResourceCollection
     {
-        return $this->listar($request, fn (Builder $q) => $q
+        $resposta = $this->listar($request, fn (Builder $q) => $q
             ->whereIn('aptidao', [Aptidao::CORTE, Aptidao::MISTA])
-            ->whereIn('categoria', (array) $request->query('categoria', [Categoria::BOI_GORDO->value])));
+            ->whereIn('categoria', (array) $request->query('categoria', [Categoria::BOI_GORDO->value]))
+            ->with('loteAtual.lote.metaAtual'));
+
+        $animais = $resposta->collection->pluck('resource');
+        $pesagens = $engorda->pesagensPorAnimal($animais->pluck('id'), Carbon::today()->subDays(config('pecuaria.engorda.janela_dias')));
+        $padrao = (float) config('pecuaria.engorda.peso_abate_kg');
+        foreach ($animais as $animal) {
+            $t = $projecao->tendencia($pesagens->get($animal->id, collect()));
+            $meta = $animal->loteAtual?->lote->metaAtual;
+            $alvo = $meta ? (float) $meta->peso_alvo_kg : $padrao;
+            $animal->setAttribute('crescimento', [
+                'peso_atual' => $t['peso_atual'],
+                'gmd' => $t['gmd'],
+                'situacao_tendencia' => $t['situacao'],
+                'situacao_tendencia_label' => $t['situacao_label'],
+                'lote' => $animal->loteAtual ? ['id' => $animal->loteAtual->lote_id, 'nome' => $animal->loteAtual->lote->nome] : null,
+                'alvo_kg' => $alvo,
+                'alvo_origem' => $meta ? 'META_LOTE' : 'PESO_ABATE_PADRAO',
+                'previsao_alvo' => $projecao->previsaoParaPeso($t, $alvo),
+            ]);
+        }
+
+        return $resposta;
     }
 
     private function listar(Request $request, callable $filtro): AnonymousResourceCollection

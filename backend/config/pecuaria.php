@@ -39,4 +39,21 @@ return [
     'estoque' => [
         'dias_aviso_validade' => (int) env('PECUARIA_DIAS_AVISO_VALIDADE', 30),
     ],
+
+    // Engorda: tendência de peso por regressão linear das pesagens recentes, projeção e metas do lote.
+    'engorda' => [
+        'janela_dias' => (int) env('PECUARIA_ENGORDA_JANELA_DIAS', 120),           // pesagens usadas na tendência
+        'minimo_pesagens' => 3,
+        'minimo_intervalo_dias' => 30,                                              // entre a 1ª e a última da janela
+        'horizonte_dias' => 90,                                                     // além disso a reta deixa de valer
+        'gmd_suspeito_min' => -1.0,                                                 // kg/dia entre pesagens seguidas
+        'gmd_suspeito_max' => 3.0,
+        'r2_confiavel' => 0.8,
+        'r2_minimo' => 0.5,                                                         // abaixo disso não projeta
+        'ritmo_ok' => (float) env('PECUARIA_ENGORDA_RITMO_OK', 0.95),               // GMD real / necessário
+        'ritmo_atencao' => (float) env('PECUARIA_ENGORDA_RITMO_ATENCAO', 0.80),
+        'gmd_maximo_plausivel' => (float) env('PECUARIA_ENGORDA_GMD_MAXIMO', 1.2),  // acima disso a meta é inviável
+        'dias_sem_pesagem' => (int) env('PECUARIA_ENGORDA_DIAS_SEM_PESAGEM', 45),
+        'peso_abate_kg' => (float) env('PECUARIA_PESO_ABATE_KG', 540),             // alvo padrão sem meta de lote
+    ],
 ];

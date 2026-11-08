@@ -16,15 +16,16 @@ use Illuminate\Validation\Rule;
 /** Entradas, saídas e ajustes de estoque. */
 class MovimentoEstoqueController extends Controller
 {
-    private const RELACOES = ['item:id,nome,unidade', 'usuario:id,name'];
+    private const RELACOES = ['item:id,nome,unidade', 'usuario:id,name', 'lote:id,nome'];
 
     public function __construct(private readonly ServicoEstoque $estoque) {}
 
-    /** Filtros: item_estoque_id, tipo, inicio, fim (data do movimento). */
+    /** Filtros: item_estoque_id, lote_id, tipo, inicio, fim (data do movimento). */
     public function index(Request $request): AnonymousResourceCollection
     {
         $filtros = $request->validate([
             'item_estoque_id' => ['nullable', 'integer'],
+            'lote_id' => ['nullable', 'integer'],
             'tipo' => ['nullable', Rule::enum(TipoMovimentoEstoque::class)],
             'inicio' => ['nullable', 'date_format:Y-m-d'],
             'fim' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:inicio'],
@@ -33,6 +34,7 @@ class MovimentoEstoqueController extends Controller
 
         $movimentos = MovimentoEstoque::with(self::RELACOES)
             ->when($filtros['item_estoque_id'] ?? null, fn ($q, $v) => $q->where('item_estoque_id', $v))
+            ->when($filtros['lote_id'] ?? null, fn ($q, $v) => $q->where('lote_id', $v))
             ->when($filtros['tipo'] ?? null, fn ($q, $v) => $q->where('tipo', $v))
             ->when($filtros['inicio'] ?? null, fn ($q, $v) => $q->where('data_movimento', '>=', $v))
             ->when($filtros['fim'] ?? null, fn ($q, $v) => $q->where('data_movimento', '<=', $v))
