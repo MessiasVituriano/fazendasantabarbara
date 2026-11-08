@@ -70,7 +70,7 @@ O script para com erro se a aplicação não subir.
 ## Registro offline (painel web)
 
 Os registros de manejo funcionam sem internet: **ordenha**, **pesagens**, **produção e pesagem rápidas** da ficha,
-**eventos reprodutivos** e **vacinas/medicamentos**.
+**eventos reprodutivos**, **vacinas/medicamentos** e **entradas/saídas de estoque**.
 
 - Sem conexão, o registro fica numa fila no `localStorage` do aparelho e sobe sozinho quando a internet volta
   (também ao abrir o app, ao voltar para a aba e a cada minuto). O indicador no cabeçalho mostra
@@ -94,6 +94,7 @@ Os registros de manejo funcionam sem internet: **ordenha**, **pesagens**, **prod
 | `PECUARIA_DIAS_ANTE_PARTO_SECAGEM` | 60 | Secagem prevista = parto provável − N dias |
 | `PECUARIA_DIAS_DESMAME_BEZERRO` | 210 | Idade em que BEZERRO vira NOVILHA/GARROTE |
 | `PECUARIA_DIAS_RETROATIVOS_CASEIRO` | 3 | Quantos dias para trás o caseiro pode lançar/corrigir |
+| `PECUARIA_DIAS_AVISO_VALIDADE` | 30 | Itens do estoque que vencem nesse prazo aparecem como "vence em breve" |
 
 Após alterar o `.env` em produção com `config:cache`, rode `php artisan config:cache` de novo.
 
@@ -122,6 +123,28 @@ Após alterar o `.env` em produção com `config:cache`, rode `php artisan confi
 | CRUD | `/api/piquetes` | RN03 — `animais_alocados` |
 | POST | `/api/piquetes/{id}/entradas` | `{animal_ids, data_entrada}` — fecha a ocupação anterior de cada animal |
 | POST | `/api/piquetes/{id}/saidas` | `{data_saida, animal_ids?}` — sem `animal_ids` esvazia o piquete |
+
+### Estoque (medicamentos, vacinas, ração e insumos)
+
+Tela **Estoque** no menu Operação. Cada item tem tipo (medicamento, vacina, ração, suplemento/sal mineral, outros),
+unidade (un, kg, saco, L, mL, dose, frasco, caixa), estoque mínimo, validade do lote em uso e localização.
+
+- **O saldo nunca é digitado:** muda só por **entradas**, **saídas** e **ajustes de inventário** (informa-se o saldo contado
+  e a diferença é lançada). Saída maior que o saldo é recusada (`ESTOQUE_INSUFICIENTE`).
+- **Alertas:** "Para repor" quando o saldo chega ao mínimo; "Validade" para itens vencidos ou que vencem em
+  `PECUARIA_DIAS_AVISO_VALIDADE` dias (padrão 30).
+- **Custo (só gestor):** o preço unitário informado na entrada vira o custo do item; o valor em estoque é saldo × custo.
+- **Sem exclusão:** movimentos são *cancelados* (com motivo) e o saldo é corrigido; itens são desativados.
+- **Perfis:** o caseiro consulta e registra entradas e saídas (sem preço, dentro do limite de dias); cadastro de itens,
+  ajuste e cancelamento são do gestor. Entradas e saídas funcionam offline (fila do aparelho, `uuid` idempotente).
+
+| Método | Rota | Observação |
+|---|---|---|
+| GET | `/api/estoque/itens` | Filtros: `tipo`, `busca`, `alerta` (REPOR, VALIDADE), `inativos=1`. `meta.resumo` traz contagem de alertas (e `valor_total` para o gestor) |
+| GET | `/api/estoque/itens/{id}` | Item com saldo e alertas |
+| POST/PATCH | `/api/estoque/itens` | Cadastro e edição (gestor) |
+| GET/POST | `/api/estoque/movimentos` | GET filtra por `item_estoque_id`, `tipo`, `inicio`, `fim`. POST: `{item_estoque_id, tipo, data_movimento, quantidade}` (ou `saldo_contado` no AJUSTE), `valor_unitario` opcional na entrada (gestor), `observacao`, `uuid` |
+| POST | `/api/estoque/movimentos/{id}/cancelamento` | Exige `motivo` (gestor); recusado se deixar o saldo negativo |
 
 ### Financeiro (somente gestor)
 

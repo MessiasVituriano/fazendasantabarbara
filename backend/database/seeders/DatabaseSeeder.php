@@ -20,6 +20,6 @@ class DatabaseSeeder extends Seeder
         User::updateOrCreate(['usuario' => 'gestor'], ['name' => 'Gestor da Fazenda', 'perfil' => 'GESTOR', 'ativo' => true, 'password' => 'gestor123']);
         User::updateOrCreate(['usuario' => 'caseiro'], ['name' => 'João Caseiro', 'perfil' => 'CASEIRO', 'ativo' => true, 'password' => 'caseiro123']);
 
-        $this->call([FazendaDemoSeeder::class, FinanceiroDemoSeeder::class]);
+        $this->call([FazendaDemoSeeder::class, FinanceiroDemoSeeder::class, EstoqueDemoSeeder::class]);
     }
 }

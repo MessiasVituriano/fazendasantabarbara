@@ -31,6 +31,7 @@ export async function aquecerCache({ forcar = false } = {}) {
     ['/pesagens', { params: { por_pagina: 500 } }],
     ['/sanidade/categorias'],
     ['/sanidade/produtos'],
+    ['/estoque/itens'],                                                         // Estoque
     ...turnos,
   ]
   await Promise.allSettled(leituras.map(([url, config]) => http.get(url, config)))
