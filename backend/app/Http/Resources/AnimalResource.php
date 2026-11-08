@@ -61,6 +61,8 @@ class AnimalResource extends JsonResource
                         .'. Leite e carne não podem ser comercializados.',
                 ] : null,
             ]),
+            // Lista de abate: tendência de peso e previsão para o peso alvo.
+            'crescimento' => $this->when(array_key_exists('crescimento', $this->resource->getAttributes()), fn () => $this->resource->getAttributes()['crescimento']),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

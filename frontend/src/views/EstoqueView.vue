@@ -89,6 +89,11 @@ async function carregarItensAtivos() {
 }
 carregarItensAtivos()
 
+/** Lotes ativos: destino das saídas (ração e sal do lote entram no custo de engorda). */
+const lotesAtivos = ref([])
+http.get('/manejo/lotes').then((r) => (lotesAtivos.value = r.data.data)).catch(() => { /* sem lotes, a saída segue sem destino */ })
+const SEM_LOTE = 'SEM_LOTE'
+
 function recarregarTudo() {
   carregarItens()
   carregarItensAtivos()
@@ -215,10 +220,11 @@ const movAberto = ref(false)
 const formMov = reactive({})
 const tiposPermitidos = computed(() => (opcoes.value?.tipo_movimento_estoque ?? []).filter((t) => ehGestor.value || t.value !== 'AJUSTE'))
 const itemDoMov = computed(() => itensAtivos.value.find((i) => String(i.id) === formMov.item))
+const loteDoMov = computed(() => (formMov.tipo === 'SAIDA' ? lotesAtivos.value.find((l) => String(l.id) === formMov.lote) : null))
 
 function abrirMovimento(tipo = 'ENTRADA', item = null) {
   limparErros()
-  Object.assign(formMov, { tipo, item: item ? String(item.id) : '', data: hoje(), quantidade: '', saldo_contado: '', valor: '', observacao: '' })
+  Object.assign(formMov, { tipo, item: item ? String(item.id) : '', lote: SEM_LOTE, data: hoje(), quantidade: '', saldo_contado: '', valor: '', observacao: '' })
   movAberto.value = true
 }
 function trocarTipoMov(tipo) {
@@ -234,6 +240,7 @@ async function salvarMovimento() {
     tipo: formMov.tipo,
     data_movimento: formMov.data,
     observacao: formMov.observacao || null,
+    ...(formMov.tipo === 'SAIDA' && formMov.lote !== SEM_LOTE ? { lote_id: Number(formMov.lote) } : {}),
     ...(ajuste ? { saldo_contado: valorParaApi(formMov.saldo_contado) } : { quantidade: valorParaApi(formMov.quantidade) }),
     ...(ehGestor.value && formMov.tipo === 'ENTRADA' && formMov.valor !== '' ? { valor_unitario: valorParaApi(formMov.valor) } : {}),
   }
@@ -241,7 +248,7 @@ async function salvarMovimento() {
   try {
     const { offline } = await enviar(() => enviarOuGuardar({
       metodo: 'post', url: '/estoque/movimentos', dados,
-      descricao: `${rotuloTipo} · ${item?.nome ?? 'item'} · ${ajuste ? `contado ${formMov.saldo_contado}` : formMov.quantidade} ${item?.unidade_sigla ?? ''}`,
+      descricao: `${rotuloTipo} · ${item?.nome ?? 'item'} · ${ajuste ? `contado ${formMov.saldo_contado}` : formMov.quantidade} ${item?.unidade_sigla ?? ''}${loteDoMov.value ? ` → ${loteDoMov.value.nome}` : ''}`,
     }))
     if (offline) avisarGuardadoOffline(rotuloTipo)
     else toast.success(`${rotuloTipo} registrada: ${item?.nome}`)
@@ -576,6 +583,7 @@ async function cancelarMovimento() {
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <span class="lua-badge" :class="ESTILO_MOV[m.tipo]">{{ m.tipo_label }}</span>
+            <span v-if="m.lote" class="text-xs text-muted-foreground">→ {{ m.lote.nome }}</span>
             <span v-if="ehGestor && m.valor_total != null" class="text-xs text-muted-foreground tabular-nums">{{ moeda(m.valor_total) }}</span>
             <Button v-if="ehGestor && !m.cancelado" variant="ghost" size="sm" class="ml-auto text-destructive" @click="abrirCancelamento(m)">Cancelar</Button>
           </div>
@@ -595,7 +603,7 @@ async function cancelarMovimento() {
               <TableHead>Data</TableHead><TableHead>Item</TableHead><TableHead>Tipo</TableHead>
               <TableHead class="text-right">Quantidade</TableHead>
               <TableHead v-if="ehGestor" class="text-right">Valor</TableHead>
-              <TableHead>Observação</TableHead>
+              <TableHead>Destino / observação</TableHead>
               <TableHead v-if="ehGestor" />
             </TableRow>
           </TableHeader>
@@ -611,11 +619,12 @@ async function cancelarMovimento() {
                 {{ m.efeito_no_saldo > 0 ? '+' : '' }}{{ qtd(m.efeito_no_saldo) }}<span class="ml-1 text-xs font-normal text-muted-foreground">{{ m.item?.unidade_sigla }}</span>
               </TableCell>
               <TableCell v-if="ehGestor" class="text-right text-sm whitespace-nowrap tabular-nums">
-                {{ moeda(m.valor_total) }}
+                {{ moeda(m.valor_total ?? m.custo_total) }}
                 <p v-if="m.valor_unitario != null" class="text-xs text-muted-foreground">{{ moeda(m.valor_unitario) }}/{{ m.item?.unidade_sigla }}</p>
               </TableCell>
               <TableCell class="max-w-64 text-sm">
-                <p class="truncate">{{ m.observacao || '—' }}</p>
+                <p v-if="m.lote" class="truncate font-medium">→ {{ m.lote.nome }}</p>
+                <p class="truncate">{{ m.observacao || (m.lote ? '' : '—') }}</p>
                 <p v-if="m.usuario" class="text-xs text-muted-foreground">por {{ m.usuario }}</p>
               </TableCell>
               <TableCell v-if="ehGestor" class="text-right">
@@ -686,6 +695,19 @@ async function cancelarMovimento() {
             <Input id="mov-valor" v-model="formMov.valor" inputmode="decimal" placeholder="Opcional" :aria-invalid="!!campos.valor_unitario" />
             <p v-if="campos.valor_unitario" class="text-xs text-destructive">{{ campos.valor_unitario }}</p>
           </div>
+        </div>
+
+        <div v-if="formMov.tipo === 'SAIDA' && lotesAtivos.length" class="grid gap-1.5">
+          <Label>Lote de destino</Label>
+          <Select v-model="formMov.lote">
+            <SelectTrigger class="w-full" :aria-invalid="!!campos.lote_id"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem :value="SEM_LOTE">Sem lote (uso geral, perda, descarte)</SelectItem>
+              <SelectItem v-for="l in lotesAtivos" :key="l.id" :value="String(l.id)">{{ l.nome }} · {{ l.animais }} cab.</SelectItem>
+            </SelectContent>
+          </Select>
+          <p v-if="campos.lote_id" class="text-xs text-destructive">{{ campos.lote_id }}</p>
+          <p v-else class="text-xs text-muted-foreground">Ração e sal do lote entram no custo de engorda dele.</p>
         </div>
 
         <div class="grid gap-1.5">

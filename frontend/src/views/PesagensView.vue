@@ -11,12 +11,19 @@ import AlertaErros from '../components/AlertaErros.vue'
 import AvatarAnimal from '../components/AvatarAnimal.vue'
 import CabecalhoPagina from '../components/layout/CabecalhoPagina.vue'
 import { useDataMinima } from '../composables/useDataMinima'
+import { useOpcoes } from '../composables/useOpcoes'
 import { dataBr, hoje, novoUuid, numero } from '../formatos'
 import { avisarGuardadoOffline, enviarOuGuardar } from '../offline/fila'
 
 /** Pesagem em lote do gado de corte, com último peso e prévia do GMD de cada animal. */
 const data = ref(hoje())
 const dataMinima = useDataMinima()
+const { opcoes } = useOpcoes()
+/** Ganho fora da faixa plausível entre a última pesagem e a digitada: provável erro de digitação. */
+const suspeito = (gmd) => {
+  const e = opcoes.value?.pecuaria?.engorda
+  return gmd !== null && !!e && (gmd < e.gmd_suspeito_min || gmd > e.gmd_suspeito_max)
+}
 const linhas = ref([])
 const busca = ref('')
 const carregando = ref(false)
@@ -133,6 +140,7 @@ async function salvar() {
               <component :is="gmdPrevia(l) >= 0 ? TrendingUp : TrendingDown" class="size-3.5" />
               {{ numero(gmdPrevia(l), 3) }} kg/dia
             </span>
+            <span v-if="suspeito(gmdPrevia(l))" class="block font-medium text-destructive">Confira o peso</span>
           </p>
         </li>
         <li v-if="!visiveis.length && !carregando" class="px-4 py-10 text-center text-sm text-muted-foreground">Nenhum animal de corte encontrado.</li>

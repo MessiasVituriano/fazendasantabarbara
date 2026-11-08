@@ -97,6 +97,16 @@ class Animal extends Model
         return $this->hasOne(HistoricoPastoreio::class)->whereNull('data_saida')->latestOfMany('data_entrada');
     }
 
+    public function historicoLotes(): HasMany
+    {
+        return $this->hasMany(AnimalLote::class);
+    }
+
+    public function loteAtual(): HasOne
+    {
+        return $this->hasOne(AnimalLote::class)->whereNull('data_saida')->latestOfMany('data_entrada');
+    }
+
     protected static function booted(): void
     {
         // O cascade do banco apagaria as linhas, mas não os arquivos: exclui pelas models.

@@ -1,5 +1,6 @@
 <script setup>
 import { reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Info, ListFilter, Pencil, Plus } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Badge } from '@/components/ui/badge'
@@ -14,15 +15,23 @@ import { Textarea } from '@/components/ui/textarea'
 import http from '../api/http'
 import AlertaErros from '../components/AlertaErros.vue'
 import FormLancamento from '../components/financeiro/FormLancamento.vue'
+import PainelEngordaLote from '../components/PainelEngordaLote.vue'
 import CabecalhoPagina from '../components/layout/CabecalhoPagina.vue'
 import { useCadastrosFinanceiros } from '../composables/useCadastrosFinanceiros'
 import { useEnvio } from '../composables/useEnvio'
-import { dataBr, hoje, mesCurto, moeda } from '../formatos'
+import { dataBr, hoje, mesCurto, moeda, numero } from '../formatos'
 
 /**
- * Lotes de recria e seus custos (vindos das despesas do financeiro vinculadas ao lote).
+ * Lotes de recria/engorda: animais, peso médio, GMD e meta (painel de engorda) e custos
+ * vindos das despesas do financeiro vinculadas ao lote.
  * Aquisição dos animais e custo operacional da recria aparecem sempre separados.
  */
+const route = useRoute()
+const TOM_META = {
+  NO_RITMO: 'text-emerald-700 dark:text-emerald-400', ATENCAO: 'text-amber-700 dark:text-amber-400',
+  ATRASADA: 'text-destructive', INVIAVEL: 'text-destructive', VENCIDA: 'text-destructive',
+  ATINGIDA: 'text-sky-700 dark:text-sky-400', SEM_DADOS: 'text-muted-foreground',
+}
 const lotes = ref([])
 const incluirEncerrados = ref(false)
 const erroCarga = ref([])
@@ -32,6 +41,9 @@ async function carregar() {
   try {
     lotes.value = (await http.get('/lotes', { params: { incluir_encerrados: incluirEncerrados.value ? 1 : 0 } })).data.data
     erroCarga.value = []
+    // Vindo da ficha do animal (/lotes?lote=ID): abre o detalhe do lote.
+    const pedido = lotes.value.find((l) => String(l.id) === route.query.lote)
+    if (pedido && !detalhe.value) abrirDetalhe(pedido)
   } catch (e) { erroCarga.value = e.mensagens }
 }
 watch(incluirEncerrados, carregar, { immediate: true })
@@ -102,6 +114,26 @@ async function lancado() {
             </CardDescription>
           </CardHeader>
           <CardContent class="grid grid-cols-2 gap-3 text-sm">
+            <p v-if="l.engorda && l.engorda.peso_medio === null" class="col-span-2 text-xs text-muted-foreground">{{ l.animais }} animal(is) · sem pesagens recentes</p>
+            <template v-else-if="l.engorda">
+              <div>
+                <p class="text-xs text-muted-foreground">{{ l.animais }} animal(is) · peso médio</p>
+                <p class="font-semibold tabular-nums">{{ numero(l.engorda.peso_medio, 0) }} kg</p>
+              </div>
+              <div>
+                <p class="text-xs text-muted-foreground">GMD médio</p>
+                <p class="font-semibold tabular-nums">{{ numero(l.engorda.gmd_medio, 3) }} kg/dia</p>
+              </div>
+              <div v-if="l.engorda.meta" class="col-span-2 space-y-1">
+                <p class="flex justify-between gap-2 text-xs">
+                  <span class="text-muted-foreground">Meta {{ numero(l.engorda.meta.peso_alvo_kg, 0) }} kg até {{ dataBr(l.engorda.meta.data_alvo) }}</span>
+                  <span class="font-medium" :class="TOM_META[l.engorda.meta.situacao]">{{ l.engorda.meta.situacao_label }}</span>
+                </p>
+                <div v-if="l.engorda.meta.progresso !== null" class="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div class="h-full rounded-full bg-primary" :style="{ width: `${l.engorda.meta.progresso * 100}%` }" />
+                </div>
+              </div>
+            </template>
             <div>
               <p class="text-xs text-muted-foreground">Despesas</p>
               <p class="font-semibold tabular-nums text-red-700 dark:text-red-400">{{ moeda(l.despesas) }}</p>
@@ -119,7 +151,7 @@ async function lancado() {
 
   <!-- Detalhe do lote -->
   <Sheet :open="!!detalhe" @update:open="(v) => !v && (detalhe = null)">
-    <SheetContent class="w-full overflow-y-auto sm:max-w-2xl">
+    <SheetContent class="w-full overflow-y-auto sm:max-w-3xl">
       <SheetHeader>
         <SheetTitle>{{ detalhe?.nome }}</SheetTitle>
         <SheetDescription v-if="detalhe">
@@ -136,6 +168,8 @@ async function lancado() {
           <Button size="sm" variant="ghost" @click="abrirForm(detalhe)"><Pencil /> Editar lote</Button>
         </div>
         <p v-if="detalhe.observacoes" class="whitespace-pre-line text-sm text-muted-foreground">{{ detalhe.observacoes }}</p>
+
+        <PainelEngordaLote :lote="detalhe" @alterado="carregar" />
 
         <template v-if="detalhe.custos">
           <!-- Aquisição x operacional x total -->
@@ -157,8 +191,8 @@ async function lancado() {
 
           <p class="flex gap-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
             <Info class="mt-0.5 size-3.5 shrink-0" />
-            Quantidade de animais, custo por animal e custo por arroba virão com a Fase 3 (animais no lote).
             Os custos aqui são por competência: incluem despesas já pagas e em aberto; cancelados não entram.
+            A ração que sai do estoque para o lote aparece em Engorda, acima.
           </p>
 
           <section>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoriaFinanceiraController;
 use App\Http\Controllers\Api\CategoriaSanitariaController;
 use App\Http\Controllers\Api\ContaFinanceiraController;
+use App\Http\Controllers\Api\EngordaController;
 use App\Http\Controllers\Api\EventoReprodutivoController;
 use App\Http\Controllers\Api\FinanceiroController;
 use App\Http\Controllers\Api\FotoAnimalController;
@@ -45,10 +46,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('animais', [AnimalController::class, 'index'])->name('animais.index');
     Route::get('animais/{animal}', [AnimalController::class, 'show'])->name('animais.show');
     Route::get('animais/{animal}/timeline', TimelineAnimalController::class)->name('animais.timeline');
+    Route::get('animais/{animal}/crescimento', [EngordaController::class, 'animal'])->name('animais.crescimento');
     Route::get('animais/{animal}/fotos', [FotoAnimalController::class, 'index'])->name('animais.fotos.index');
     Route::post('animais/{animal}/fotos', [FotoAnimalController::class, 'store'])->name('animais.fotos.store');
 
     Route::get('manejo/ordenha', [ManejoController::class, 'ordenha'])->name('manejo.ordenha');
+    // Destino das saídas de estoque: só id e nome dos lotes ativos (o resto do lote é do gestor).
+    Route::get('manejo/lotes', [EngordaController::class, 'lotesAtivos'])->name('manejo.lotes');
 
     // RF01: gravação em lote (sincronização mobile)
     Route::apiResource('producoes-leite', ProducaoLeiteController::class)->only(['index', 'store']);
@@ -74,6 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('perfil:GESTOR')->group(function () {
         Route::get('painel/leite', [PainelController::class, 'leite'])->name('painel.leite');
         Route::get('painel/leite/comparativo', [PainelController::class, 'comparativoLeite'])->name('painel.leite.comparativo');
+        Route::get('painel/engorda', [EngordaController::class, 'alertas'])->name('painel.engorda');
         Route::get('manejo/abate', [ManejoController::class, 'abate'])->name('manejo.abate');
 
         Route::post('animais', [AnimalController::class, 'store'])->name('animais.store');
@@ -132,5 +137,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::apiResource('pessoas', PessoaController::class)->only(['index', 'store', 'update']);
         Route::apiResource('lotes', LoteController::class)->except(['destroy']);
+        Route::get('lotes/{lote}/engorda', [EngordaController::class, 'lote'])->name('lotes.engorda');
+        Route::post('lotes/{lote}/animais', [EngordaController::class, 'entradas'])->name('lotes.animais.entradas');
+        Route::post('lotes/{lote}/saidas', [EngordaController::class, 'saidas'])->name('lotes.animais.saidas');
+        Route::post('lotes/{lote}/metas', [EngordaController::class, 'salvarMeta'])->name('lotes.metas.store');
+        Route::post('lotes/{lote}/metas/{meta}/cancelamento', [EngordaController::class, 'cancelarMeta'])->name('lotes.metas.cancelamento');
     });
 });

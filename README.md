@@ -95,6 +95,11 @@ Os registros de manejo funcionam sem internet: **ordenha**, **pesagens**, **prod
 | `PECUARIA_DIAS_DESMAME_BEZERRO` | 210 | Idade em que BEZERRO vira NOVILHA/GARROTE |
 | `PECUARIA_DIAS_RETROATIVOS_CASEIRO` | 3 | Quantos dias para trás o caseiro pode lançar/corrigir |
 | `PECUARIA_DIAS_AVISO_VALIDADE` | 30 | Itens do estoque que vencem nesse prazo aparecem como "vence em breve" |
+| `PECUARIA_ENGORDA_JANELA_DIAS` | 120 | Pesagens usadas na tendência de peso (regressão linear) |
+| `PECUARIA_ENGORDA_RITMO_OK` / `_ATENCAO` | 0.95 / 0.80 | GMD real ÷ necessário para a meta ficar "no ritmo" / "atenção" |
+| `PECUARIA_ENGORDA_GMD_MAXIMO` | 1.2 | GMD necessário acima disso torna a meta inviável |
+| `PECUARIA_ENGORDA_DIAS_SEM_PESAGEM` | 45 | Aviso de lote com animais sem pesagem recente |
+| `PECUARIA_PESO_ABATE_KG` | 540 | Peso alvo da previsão de abate quando o animal não tem meta de lote |
 
 Após alterar o `.env` em produção com `config:cache`, rode `php artisan config:cache` de novo.
 
@@ -145,6 +150,38 @@ unidade (un, kg, saco, L, mL, dose, frasco, caixa), estoque mínimo, validade do
 | POST/PATCH | `/api/estoque/itens` | Cadastro e edição (gestor) |
 | GET/POST | `/api/estoque/movimentos` | GET filtra por `item_estoque_id`, `tipo`, `inicio`, `fim`. POST: `{item_estoque_id, tipo, data_movimento, quantidade}` (ou `saldo_contado` no AJUSTE), `valor_unitario` opcional na entrada (gestor), `observacao`, `uuid` |
 | POST | `/api/estoque/movimentos/{id}/cancelamento` | Exige `motivo` (gestor); recusado se deixar o saldo negativo |
+
+Saídas aceitam `lote_id` (lote de destino, ativo); o custo do item no dia fica gravado no movimento. `GET` filtra por `lote_id`.
+
+### Engorda (animais no lote, projeção de peso e metas)
+
+Na tela **Lotes** (gestor), cada lote mostra animais, peso médio, GMD e meta; o detalhe traz o painel de engorda.
+A ficha do animal mostra o crescimento, e a lista de **Abate** mostra a previsão para o peso alvo.
+
+- **Animais no lote:** com histórico (entrada/saída), um lote por vez. Só animais ativos de corte ou mista.
+  Entrar em outro lote encerra a passagem anterior; encerrar o lote retira os animais na data do encerramento.
+- **Tendência de peso:** regressão linear simples das pesagens dos últimos `PECUARIA_ENGORDA_JANELA_DIAS` (padrão 120),
+  com no mínimo 3 pesagens cobrindo 30 dias. O GMD de tendência é a inclinação da reta; o R² mostra se é confiável
+  (≥ 0,8), instável (≥ 0,5) ou irregular (sem projeção). A projeção vai no máximo a 90 dias, com faixa de ~95%:
+  o crescimento do bovino é uma curva em S e muda entre águas e seca, então a reta só vale para a fase atual.
+- **Pesagem suspeita:** a que gera ganho fora de −1 a +3 kg/dia com as vizinhas é marcada e fica fora da conta (nada é apagado).
+  A tela Pesagens avisa "Confira o peso" ao digitar.
+- **Meta do lote:** peso médio alvo numa data. Situação calculada (não gravada) pelo GMD real ÷ GMD necessário:
+  no ritmo (≥ `PECUARIA_ENGORDA_RITMO_OK`, 95%), atenção (≥ `PECUARIA_ENGORDA_RITMO_ATENCAO`, 80%), atrasada; inviável se o
+  GMD necessário passar de `PECUARIA_ENGORDA_GMD_MAXIMO` (1,2 kg/dia); atingida; vencida. Nova meta substitui a anterior (histórico mantido).
+- **Ração do lote:** a saída de estoque aceita `lote_id` (lote de destino) e grava o custo do item no dia. O painel do lote mostra
+  consumo e custo (30 dias, por cabeça/dia e um indicativo por kg ganho).
+- Sem meta, a previsão de abate usa `PECUARIA_PESO_ABATE_KG` (540). Painel avisa metas atrasadas/inviáveis/vencidas/atingidas,
+  lotes com animais sem pesagem há `PECUARIA_ENGORDA_DIAS_SEM_PESAGEM` dias (45) e animais perdendo peso.
+
+| Método | Rota | Observação |
+|---|---|---|
+| GET | `/api/lotes/{id}/engorda` | Resumo, meta avaliada, série do peso médio, animais e ração (gestor) |
+| POST | `/api/lotes/{id}/animais`, `/api/lotes/{id}/saidas` | `{animal_ids, data_entrada}` / `{data_saida, animal_ids?}` (gestor) |
+| POST | `/api/lotes/{id}/metas`, `/api/lotes/{id}/metas/{meta}/cancelamento` | `{peso_alvo_kg, data_alvo, data_inicio?, gmd_alvo?, observacoes?}` (gestor) |
+| GET | `/api/animais/{id}/crescimento` | Pesagens (com suspeitas), tendência, lote/meta e previsão para o peso alvo |
+| GET | `/api/manejo/lotes` | Lotes ativos (id, nome, animais) para o destino da saída de estoque — os dois perfis |
+| GET | `/api/painel/engorda` | Avisos da engorda (gestor) |
 
 ### Financeiro (somente gestor)
 
