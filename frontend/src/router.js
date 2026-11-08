@@ -15,6 +15,7 @@ const router = createRouter({
     { path: '/pesagens', name: 'pesagens', component: () => import('./views/PesagensView.vue') },
     { path: '/sanidade', name: 'sanidade', component: () => import('./views/SanidadeView.vue') },
     { path: '/abate', name: 'abate', component: () => import('./views/AbateView.vue'), meta: SO_GESTOR },
+    { path: '/estoque', name: 'estoque', component: () => import('./views/EstoqueView.vue') },
     { path: '/piquetes', name: 'piquetes', component: () => import('./views/PiquetesView.vue') },
     { path: '/perfil', name: 'perfil', component: () => import('./views/PerfilView.vue') },
     // Financeiro e lotes (somente gestor)

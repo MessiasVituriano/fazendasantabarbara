@@ -9,10 +9,12 @@ use App\Http\Controllers\Api\ContaFinanceiraController;
 use App\Http\Controllers\Api\EventoReprodutivoController;
 use App\Http\Controllers\Api\FinanceiroController;
 use App\Http\Controllers\Api\FotoAnimalController;
+use App\Http\Controllers\Api\ItemEstoqueController;
 use App\Http\Controllers\Api\LancamentoController;
 use App\Http\Controllers\Api\LoteController;
 use App\Http\Controllers\Api\ManejoController;
 use App\Http\Controllers\Api\MovimentoCapitalController;
+use App\Http\Controllers\Api\MovimentoEstoqueController;
 use App\Http\Controllers\Api\OpcoesController;
 use App\Http\Controllers\Api\PainelController;
 use App\Http\Controllers\Api\PesagemController;
@@ -57,6 +59,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('sanidade/categorias', [CategoriaSanitariaController::class, 'index'])->name('sanidade.categorias.index');
     Route::get('sanidade/produtos', [ProdutoSanitarioController::class, 'index'])->name('sanidade.produtos.index');
 
+    // Estoque: consulta, entradas e saídas para os dois perfis.
+    Route::get('estoque/itens', [ItemEstoqueController::class, 'index'])->name('estoque.itens.index');
+    Route::get('estoque/itens/{item}', [ItemEstoqueController::class, 'show'])->name('estoque.itens.show');
+    Route::get('estoque/movimentos', [MovimentoEstoqueController::class, 'index'])->name('estoque.movimentos.index');
+    Route::post('estoque/movimentos', [MovimentoEstoqueController::class, 'store'])->name('estoque.movimentos.store');
+
     Route::get('piquetes', [PiqueteController::class, 'index'])->name('piquetes.index');
     Route::get('piquetes/{piquete}', [PiqueteController::class, 'show'])->name('piquetes.show');
     Route::post('piquetes/{piquete}/entradas', [PiqueteController::class, 'entradas'])->name('piquetes.entradas');
@@ -81,6 +89,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('sanidade/categorias/{categoria}', [CategoriaSanitariaController::class, 'update'])->name('sanidade.categorias.update');
         Route::post('sanidade/produtos', [ProdutoSanitarioController::class, 'store'])->name('sanidade.produtos.store');
         Route::patch('sanidade/produtos/{produto}', [ProdutoSanitarioController::class, 'update'])->name('sanidade.produtos.update');
+
+        Route::post('estoque/itens', [ItemEstoqueController::class, 'store'])->name('estoque.itens.store');
+        Route::patch('estoque/itens/{item}', [ItemEstoqueController::class, 'update'])->name('estoque.itens.update');
+        Route::post('estoque/movimentos/{movimento}/cancelamento', [MovimentoEstoqueController::class, 'cancelar'])->name('estoque.movimentos.cancelamento');
 
         Route::post('piquetes', [PiqueteController::class, 'store'])->name('piquetes.store');
         Route::match(['put', 'patch'], 'piquetes/{piquete}', [PiqueteController::class, 'update'])->name('piquetes.update');

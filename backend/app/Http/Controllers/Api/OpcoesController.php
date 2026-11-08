@@ -33,6 +33,9 @@ class OpcoesController extends Controller
             'tipo_conta_financeira' => $opcoes(Enums\TipoContaFinanceira::class),
             'tipo_pessoa' => $opcoes(Enums\TipoPessoa::class),
             'tipo_produto_sanitario' => $opcoes(Enums\TipoProdutoSanitario::class),
+            'tipo_item_estoque' => $opcoes(Enums\TipoItemEstoque::class),
+            'unidade_estoque' => array_map(fn ($u) => ['value' => $u->value, 'label' => $u->label(), 'sigla' => $u->sigla()], Enums\UnidadeEstoque::cases()),
+            'tipo_movimento_estoque' => $opcoes(Enums\TipoMovimentoEstoque::class),
             'pecuaria' => config('pecuaria'),
         ]]);
     }

@@ -34,4 +34,9 @@ return [
         'tamanho_maximo_anexo_kb' => 10240,
         'maximo_parcelas' => 120,
     ],
+
+    // Estoque: itens com validade até N dias à frente aparecem como "vence em breve".
+    'estoque' => [
+        'dias_aviso_validade' => (int) env('PECUARIA_DIAS_AVISO_VALIDADE', 30),
+    ],
 ];
