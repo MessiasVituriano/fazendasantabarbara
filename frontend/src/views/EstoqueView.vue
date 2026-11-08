@@ -15,7 +15,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import http from '../api/http'
 import AlertaErros from '../components/AlertaErros.vue'
 import CabecalhoPagina from '../components/layout/CabecalhoPagina.vue'
-import { avisarGuardadoOffline, enviarOuGuardar } from '../offline/fila'
+import { avisarGuardadoOffline, enviarOuGuardar, useFilaOffline } from '../offline/fila'
 import { useDataMinima } from '../composables/useDataMinima'
 import { useEnvio } from '../composables/useEnvio'
 import { useOpcoes } from '../composables/useOpcoes'
@@ -94,6 +94,10 @@ function recarregarTudo() {
   carregarItensAtivos()
   if (aba.value === 'movimentos') carregarMovimentos()
 }
+
+// Registros feitos offline subiram: atualiza saldos e histórico.
+const { pendentes } = useFilaOffline()
+watch(() => pendentes.value.length, (agora, antes) => { if (agora < antes) recarregarTudo() })
 
 // ---------------- Movimentações ----------------
 const movimentos = ref([])
@@ -314,7 +318,40 @@ async function cancelarMovimento() {
         </div>
       </div>
 
-      <div class="overflow-x-auto rounded-xl border bg-card" :class="{ 'opacity-50': carregandoItens }">
+      <!-- celular: cartões com saldo, alertas e ações à vista -->
+      <ul class="divide-y rounded-xl border bg-card md:hidden" :class="{ 'opacity-50': carregandoItens }">
+        <li v-for="i in itens" :key="i.id" class="space-y-2 px-4 py-3" :class="{ 'opacity-60': !i.ativo }">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="font-medium">{{ i.nome }}</p>
+              <p class="text-xs text-muted-foreground">{{ [i.tipo_label, i.localizacao].filter(Boolean).join(' · ') }}</p>
+            </div>
+            <p class="shrink-0 text-right tabular-nums">
+              <span class="text-lg font-semibold" :class="{ 'text-destructive': i.abaixo_minimo }">{{ qtd(i.saldo) }}</span>
+              <span class="ml-1 text-xs text-muted-foreground">{{ i.unidade_sigla }}</span>
+              <span v-if="i.estoque_minimo" class="block text-xs text-muted-foreground">mín. {{ qtd(i.estoque_minimo) }}</span>
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <Badge v-if="!i.ativo" variant="outline">Desativado</Badge>
+            <Badge v-if="i.abaixo_minimo" variant="destructive">{{ i.saldo > 0 ? 'Repor' : 'Sem estoque' }}</Badge>
+            <Badge v-if="i.situacao_validade === 'VENCIDO'" variant="destructive">Vencido em {{ dataBr(i.data_validade) }}</Badge>
+            <Badge v-else-if="i.situacao_validade === 'VENCE_EM_BREVE'" class="border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">Vence {{ dataBr(i.data_validade) }}</Badge>
+            <span v-if="ehGestor && i.valor_estoque != null" class="text-xs text-muted-foreground tabular-nums">{{ moeda(i.valor_estoque) }}</span>
+            <div class="ml-auto flex">
+              <template v-if="i.ativo">
+                <Button variant="ghost" size="icon" :aria-label="`Entrada de ${i.nome}`" @click="abrirMovimento('ENTRADA', i)"><ArrowDownToLine /></Button>
+                <Button variant="ghost" size="icon" :aria-label="`Saída de ${i.nome}`" :disabled="!i.saldo" @click="abrirMovimento('SAIDA', i)"><ArrowUpFromLine /></Button>
+              </template>
+              <Button variant="ghost" size="icon" :aria-label="`Histórico de ${i.nome}`" @click="verHistorico(i)"><History /></Button>
+              <Button v-if="ehGestor" variant="ghost" size="icon" :aria-label="`Editar ${i.nome}`" @click="abrirItem(i)"><Pencil /></Button>
+            </div>
+          </div>
+        </li>
+        <li v-if="!itens.length && !carregandoItens" class="px-4 py-3 text-sm text-muted-foreground">Nenhum item encontrado.</li>
+      </ul>
+
+      <div class="hidden overflow-x-auto rounded-xl border bg-card md:block" :class="{ 'opacity-50': carregandoItens }">
         <Table>
           <TableHeader>
             <TableRow>
@@ -369,7 +406,30 @@ async function cancelarMovimento() {
 
     <!-- MOVIMENTAÇÕES -->
     <template v-else>
-      <div class="overflow-x-auto rounded-xl border bg-card" :class="{ 'opacity-50': carregandoMov }">
+      <!-- celular: cartões com a quantidade em destaque -->
+      <ul class="divide-y rounded-xl border bg-card md:hidden" :class="{ 'opacity-50': carregandoMov }">
+        <li v-for="m in movimentos" :key="m.id" class="space-y-1 px-4 py-3" :class="{ 'opacity-60': m.cancelado }">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="font-medium" :class="{ 'line-through': m.cancelado }">{{ m.item?.nome }}</p>
+              <p class="text-xs text-muted-foreground tabular-nums">{{ dataBr(m.data_movimento) }}<template v-if="m.usuario"> · {{ m.usuario }}</template></p>
+            </div>
+            <p class="shrink-0 text-right font-semibold tabular-nums" :class="m.efeito_no_saldo < 0 ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'">
+              {{ m.efeito_no_saldo > 0 ? '+' : '' }}{{ qtd(m.efeito_no_saldo) }}<span class="ml-1 text-xs font-normal text-muted-foreground">{{ m.item?.unidade_sigla }}</span>
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <Badge class="border-transparent" :class="ESTILO_MOV[m.tipo]">{{ m.tipo_label }}</Badge>
+            <span v-if="ehGestor && m.valor_total != null" class="text-xs text-muted-foreground tabular-nums">{{ moeda(m.valor_total) }}</span>
+            <Button v-if="ehGestor && !m.cancelado" variant="ghost" size="sm" class="ml-auto text-destructive" @click="abrirCancelamento(m)">Cancelar</Button>
+          </div>
+          <p v-if="m.observacao" class="text-sm text-muted-foreground">{{ m.observacao }}</p>
+          <p v-if="m.cancelado" class="text-xs text-destructive">Cancelado: {{ m.motivo_cancelamento }}</p>
+        </li>
+        <li v-if="!movimentos.length && !carregandoMov" class="px-4 py-3 text-sm text-muted-foreground">Nenhuma movimentação encontrada.</li>
+      </ul>
+
+      <div class="hidden overflow-x-auto rounded-xl border bg-card md:block" :class="{ 'opacity-50': carregandoMov }">
         <Table>
           <TableHeader>
             <TableRow>
