@@ -72,6 +72,14 @@ O script para com erro se a aplicação não subir.
   Os links usam `PECUARIA_URL_PAINEL` (padrão: `APP_URL`).
 - **Limites**: login 30 tentativas/min por IP (e 5 por usuário); convites e nova senha 10/min por IP.
 
+## Fazenda de demonstração
+
+Para apresentar o sistema, inclusive em produção: `php artisan pecuaria:criar-demo --usuario=SEU_USUARIO` cria um cliente
+"Demonstração" com uma fazenda cheia de dados de exemplo (rebanho, ordenha, engorda, financeiro, estoque), isolada das
+fazendas reais, e dá acesso de gestor a quem for informado (`--usuario` pode repetir). A troca de fazenda aparece no menu
+do usuário. `--recriar` apaga e gera de novo com as datas de hoje, mantendo quem tinha acesso. Nenhum usuário com senha
+padrão é criado.
+
 ## LGPD
 
 - **Exportação**: Administração → "Exportar dados" ou Conta do produtor → "Exportar dados": ZIP com um JSON por tabela de

@@ -153,7 +153,7 @@ async function sair() {
     <article v-for="c in filtrados" :key="c.id" class="rounded-xl border bg-card" :class="{ 'opacity-70': !c.ativo }">
       <div class="flex flex-wrap items-start gap-3 border-b p-4">
         <div class="min-w-0 flex-1">
-          <p class="font-semibold">{{ c.nome }} <Badge v-if="!c.ativo" variant="destructive" class="ml-1 align-middle">Suspenso</Badge></p>
+          <p class="font-semibold">{{ c.nome }} <Badge v-if="c.demonstracao" variant="secondary" class="ml-1 align-middle">Demonstração</Badge> <Badge v-if="!c.ativo" variant="destructive" class="ml-1 align-middle">Suspenso</Badge></p>
           <p class="text-xs text-muted-foreground">
             Cliente desde {{ data(c.created_at) }}<template v-if="c.documento"> · {{ c.documento }}</template>
             · Responsável: {{ c.donos.map((d) => d.nome).join(', ') || 'ainda não entrou' }}

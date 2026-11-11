@@ -18,9 +18,11 @@ class Cliente extends Model
 
     protected $fillable = ['nome', 'documento', 'ativo'];
 
+    protected $attributes = ['demonstracao' => false];
+
     protected function casts(): array
     {
-        return ['ativo' => 'boolean'];
+        return ['ativo' => 'boolean', 'demonstracao' => 'boolean'];
     }
 
     public function fazendas(): HasMany
