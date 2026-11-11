@@ -56,6 +56,30 @@ services:
         limits:
           memory: 256M
 
+  # Backup diario do banco e dos arquivos no volume "backups" (ver docker/backup.sh e README).
+  backup:
+    image: postgres:16-alpine
+    container_name: fazenda-backup-prod
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TZ: America/Sao_Paulo
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    volumes:
+      - ./docker/backup.sh:/backup.sh:ro
+      - backups:/backups
+      - storage-data:/storage:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - fazenda-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
 networks:
   fazenda-network:
     driver: bridge
@@ -64,4 +88,6 @@ volumes:
   pgdata:
     driver: local
   storage-data:
+    driver: local
+  backups:
     driver: local

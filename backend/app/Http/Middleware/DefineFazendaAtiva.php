@@ -2,7 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\Perfil;
 use App\Exceptions\RegraNegocioException;
+use App\Models\AcessoSuporte;
+use App\Models\FazendaUsuario;
+use App\Models\User;
 use App\Services\ContextoFazenda;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
@@ -33,7 +37,7 @@ class DefineFazendaAtiva
         $pedida = (string) $request->header(self::CABECALHO, '');
 
         if ($pedida !== '') {
-            $vinculo = ctype_digit($pedida) ? $vinculos->firstWhere('fazenda_id', (int) $pedida) : null;
+            $vinculo = ctype_digit($pedida) ? ($vinculos->firstWhere('fazenda_id', (int) $pedida) ?? $this->suporte($usuario, (int) $pedida)) : null;
             if ($vinculo === null) {
                 throw new RegraNegocioException('Você não tem acesso a esta fazenda.', 'SEM_ACESSO_FAZENDA', 403);
             }
@@ -50,5 +54,23 @@ class DefineFazendaAtiva
         $this->contexto->definir($vinculo->fazenda, $vinculo);
 
         return $next($request);
+    }
+
+    /**
+     * Administrador da plataforma em suporte: entra como gestor enquanto o acesso de suporte valer (com motivo e
+     * prazo registrados), inclusive em cliente suspenso. O vínculo não é gravado.
+     */
+    private function suporte(User $usuario, int $fazendaId): ?FazendaUsuario
+    {
+        if (! $usuario->admin_plataforma) {
+            return null;
+        }
+        $acesso = AcessoSuporte::ativos()->where('user_id', $usuario->id)->where('fazenda_id', $fazendaId)->with('fazenda')->first();
+        if ($acesso === null) {
+            return null;
+        }
+
+        return (new FazendaUsuario(['fazenda_id' => $fazendaId, 'user_id' => $usuario->id, 'perfil' => Perfil::GESTOR, 'ativo' => true]))
+            ->setRelation('fazenda', $acesso->fazenda);
     }
 }

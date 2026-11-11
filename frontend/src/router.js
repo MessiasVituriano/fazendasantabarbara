@@ -8,6 +8,13 @@ const router = createRouter({
   routes: [
     { path: '/entrar', name: 'entrar', component: () => import('./views/EntrarView.vue'), meta: { publica: true } },
     { path: '/fazendas', name: 'fazendas', component: () => import('./views/EscolherFazendaView.vue'), meta: { semFazenda: true } },
+    // Sem login: links de convite e de nova senha (valem mesmo com outra sessão aberta no aparelho).
+    { path: '/esqueci-senha', name: 'esqueci-senha', component: () => import('./views/EsqueciSenhaView.vue'), meta: { publica: true } },
+    { path: '/nova-senha/:token', name: 'nova-senha', component: () => import('./views/NovaSenhaView.vue'), props: true, meta: { publica: true } },
+    { path: '/convite/:token', name: 'convite', component: () => import('./views/ConviteView.vue'), props: true, meta: { publica: true } },
+    // Administração da plataforma e conta do produtor
+    { path: '/admin', name: 'admin', component: () => import('./views/AdminView.vue'), meta: { semFazenda: true, admin: true } },
+    { path: '/conta', name: 'conta', component: () => import('./views/ContaView.vue'), meta: { dono: true } },
     { path: '/', redirect: '/financeiro' },
     { path: '/painel', name: 'painel', component: () => import('./views/PainelView.vue'), meta: SO_GESTOR },
     { path: '/animais', name: 'animais', component: () => import('./views/AnimaisView.vue') },
@@ -36,16 +43,21 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const { autenticado, usuario, fazendas, fazendaId } = useSessao()
-  // Quem tem mais de uma fazenda escolhe uma antes de entrar nas telas.
+  const { autenticado, usuario, fazendas, fazendaId, admin, dono } = useSessao()
+  // Quem tem mais de uma fazenda escolhe uma antes de entrar nas telas; o administrador sem fazenda fica na administração.
   const precisaEscolher = !fazendaId.value && fazendas.value.length > 1
+  const adminSemFazenda = admin.value && !fazendaId.value && fazendas.value.length === 0
   if (to.meta.publica) {
     if (!autenticado.value || to.name !== 'entrar') return true
+    if (adminSemFazenda) return { name: 'admin' }
     return precisaEscolher ? { name: 'fazendas' } : inicioDoPerfil(usuario.value.perfil)
   }
   if (!autenticado.value) return { name: 'entrar', query: { volta: to.fullPath } }
+  if (to.meta.admin && !admin.value) return inicioDoPerfil(usuario.value.perfil)
   if (to.meta.semFazenda) return true
+  if (adminSemFazenda) return { name: 'admin' }
   if (precisaEscolher) return { name: 'fazendas', query: { volta: to.fullPath } }
+  if (to.meta.dono && !dono.value) return inicioDoPerfil(usuario.value.perfil)
   // Área restrita: o caseiro vai para o operacional.
   if (to.meta.perfis && !to.meta.perfis.includes(usuario.value.perfil)) return inicioDoPerfil(usuario.value.perfil)
   return true

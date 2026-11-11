@@ -42,9 +42,14 @@ export function useSessao() {
     fazendas,
     fazendaId,
     fazendaAtual,
-    iniciar: (token, dadosUsuario, listaFazendas = []) => salvar({
-      token, usuario: dadosUsuario, fazendas: listaFazendas, fazendaId: fazendaPadrao(listaFazendas, null),
+    /** Administrador da plataforma (clientes, convites de dono, suporte) e dono do cliente da fazenda ativa. */
+    admin: computed(() => !!sessao.value?.admin),
+    dono: computed(() => !!sessao.value?.dono),
+    iniciar: (token, dadosUsuario, listaFazendas = [], { admin = false, fazendaId: preferida = null } = {}) => salvar({
+      token, usuario: dadosUsuario, fazendas: listaFazendas, admin, dono: false,
+      fazendaId: fazendaPadrao(listaFazendas, preferida),
     }),
+    atualizarPapeis: ({ admin, dono }) => sessao.value && salvar({ ...sessao.value, admin: !!admin, dono: !!dono }),
     /** Dados vindos da API para a fazenda ativa (o perfil recebido é o desta fazenda). */
     atualizarUsuario: (dadosUsuario) => {
       if (!sessao.value) return

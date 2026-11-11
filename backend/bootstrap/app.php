@@ -2,6 +2,8 @@
 
 use App\Exceptions\RegraNegocioException;
 use App\Http\Middleware\DefineFazendaAtiva;
+use App\Http\Middleware\ExigeAdmin;
+use App\Http\Middleware\ExigeDono;
 use App\Http\Middleware\ExigePerfil;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -36,7 +38,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias(['perfil' => ExigePerfil::class, 'fazenda' => DefineFazendaAtiva::class]);
+        $middleware->alias([
+            'perfil' => ExigePerfil::class, 'fazenda' => DefineFazendaAtiva::class,
+            'admin' => ExigeAdmin::class, 'dono' => ExigeDono::class,
+        ]);
         // A fazenda precisa estar definida antes de resolver os models da rota (o filtro por fazenda depende dela).
         $middleware->prependToPriorityList(SubstituteBindings::class, DefineFazendaAtiva::class);
     })

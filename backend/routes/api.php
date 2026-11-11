@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AnexoLancamentoController;
 use App\Http\Controllers\Api\AnimalController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoriaFinanceiraController;
 use App\Http\Controllers\Api\CategoriaSanitariaController;
+use App\Http\Controllers\Api\ClienteController;
 use App\Http\Controllers\Api\ContaFinanceiraController;
+use App\Http\Controllers\Api\ConviteController;
 use App\Http\Controllers\Api\EngordaController;
 use App\Http\Controllers\Api\EventoReprodutivoController;
 use App\Http\Controllers\Api\FinanceiroController;
@@ -23,6 +26,7 @@ use App\Http\Controllers\Api\PessoaController;
 use App\Http\Controllers\Api\PiqueteController;
 use App\Http\Controllers\Api\ProducaoLeiteController;
 use App\Http\Controllers\Api\ProdutoSanitarioController;
+use App\Http\Controllers\Api\SenhaController;
 use App\Http\Controllers\Api\SistemaController;
 use App\Http\Controllers\Api\TimelineAnimalController;
 use App\Http\Controllers\Api\UsuarioController;
@@ -34,13 +38,31 @@ use Illuminate\Support\Facades\Route;
 | Rotas sem middleware de perfil valem para os dois.
 */
 
-Route::post('login', [AuthController::class, 'login'])->name('login');
+// Públicas, com limite por IP (o login também limita as tentativas por usuário).
+Route::post('login', [AuthController::class, 'login'])->middleware('throttle:30,1')->name('login');
 Route::get('sistema', SistemaController::class)->name('sistema');
+Route::middleware('throttle:10,1')->group(function () {
+    Route::get('convites/{token}', [ConviteController::class, 'mostrar'])->name('convites.mostrar');
+    Route::post('convites/{token}/aceitar', [ConviteController::class, 'aceitar'])->name('convites.aceitar');
+    Route::post('senha/esqueci', [SenhaController::class, 'solicitar'])->name('senha.esqueci');
+    Route::post('senha/redefinir', [SenhaController::class, 'redefinir'])->name('senha.redefinir');
+});
 
 // Sessão: funcionam antes de escolher a fazenda (quem tem várias ainda não mandou X-Fazenda).
 Route::middleware(['auth:sanctum', 'fazenda:opcional'])->group(function () {
     Route::get('eu', [AuthController::class, 'eu'])->name('eu');
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+
+    // ---- Administração da plataforma ----
+    Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('clientes', [AdminController::class, 'clientes'])->name('clientes.index');
+        Route::post('clientes', [AdminController::class, 'criarCliente'])->name('clientes.store');
+        Route::patch('clientes/{cliente}', [AdminController::class, 'atualizarCliente'])->name('clientes.update');
+        Route::get('clientes/{cliente}/exportacao', [AdminController::class, 'exportar'])->name('clientes.exportacao');
+        Route::post('fazendas/{fazenda}/convites', [AdminController::class, 'convidar'])->name('fazendas.convites');
+        Route::post('fazendas/{fazenda}/suporte', [AdminController::class, 'iniciarSuporte'])->name('fazendas.suporte');
+        Route::delete('fazendas/{fazenda}/suporte', [AdminController::class, 'encerrarSuporte'])->name('fazendas.suporte.encerrar');
+    });
 });
 
 Route::middleware(['auth:sanctum', 'fazenda'])->group(function () {
@@ -79,6 +101,14 @@ Route::middleware(['auth:sanctum', 'fazenda'])->group(function () {
     Route::post('piquetes/{piquete}/entradas', [PiqueteController::class, 'entradas'])->name('piquetes.entradas');
     Route::post('piquetes/{piquete}/saidas', [PiqueteController::class, 'saidas'])->name('piquetes.saidas');
 
+    // ---- Conta do produtor (dono do cliente) ----
+    Route::middleware('dono')->prefix('cliente')->name('cliente.')->group(function () {
+        Route::get('/', [ClienteController::class, 'mostrar'])->name('mostrar');
+        Route::post('fazendas', [ClienteController::class, 'criarFazenda'])->name('fazendas.store');
+        Route::patch('fazendas/{fazenda}', [ClienteController::class, 'atualizarFazenda'])->name('fazendas.update');
+        Route::get('exportacao', [ClienteController::class, 'exportar'])->name('exportacao');
+    });
+
     // ---- Gestão (somente gestor) ----
     Route::middleware('perfil:GESTOR')->group(function () {
         Route::get('painel/leite', [PainelController::class, 'leite'])->name('painel.leite');
@@ -111,6 +141,10 @@ Route::middleware(['auth:sanctum', 'fazenda'])->group(function () {
         // O caseiro não altera os próprios dados nem a senha: o gestor faz isso em Usuários.
         Route::put('eu', [AuthController::class, 'atualizarPerfil'])->name('eu.atualizar');
         Route::put('eu/senha', [AuthController::class, 'alterarSenha'])->name('eu.senha');
+        Route::get('usuarios/convites', [ConviteController::class, 'index'])->name('usuarios.convites.index');
+        Route::post('usuarios/convites', [ConviteController::class, 'store'])->name('usuarios.convites.store');
+        Route::post('usuarios/convites/{convite}/cancelamento', [ConviteController::class, 'cancelar'])->name('usuarios.convites.cancelamento');
+        Route::post('usuarios/{usuario}/link-senha', [SenhaController::class, 'gerarLink'])->name('usuarios.link-senha');
         Route::apiResource('usuarios', UsuarioController::class)->only(['index', 'store', 'update'])
             ->parameters(['usuarios' => 'usuario']);
 

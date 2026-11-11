@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChevronDown, LogOut, Monitor, Moon, Sun, UserRound, Wheat } from '@lucide/vue'
+import { Building2, ChevronDown, LogOut, Monitor, Moon, Settings, Sun, UserRound, Wheat } from '@lucide/vue'
 import { useColorMode } from '@vueuse/core'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,7 +17,7 @@ import { useFilaOffline } from '@/offline/fila'
 
 /** Canto superior direito: alternar tema e menu do usuário (perfil, fazenda, tema, sair). */
 const router = useRouter()
-const { usuario, encerrar, fazendas, fazendaId } = useSessao()
+const { usuario, encerrar, fazendas, fazendaId, admin, dono } = useSessao()
 
 // Troca de fazenda: só aparece para quem tem mais de uma.
 const fazendaEscolhida = computed({
@@ -74,6 +74,8 @@ async function sair() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem @select="router.push('/perfil')"><UserRound /> Meu perfil</DropdownMenuItem>
+        <DropdownMenuItem v-if="dono" @select="router.push('/conta')"><Building2 /> Conta do produtor</DropdownMenuItem>
+        <DropdownMenuItem v-if="admin" @select="router.push('/admin')"><Settings /> Administração</DropdownMenuItem>
         <DropdownMenuSeparator />
         <template v-if="fazendas.length > 1">
           <DropdownMenuLabel class="text-xs text-muted-foreground">Fazenda</DropdownMenuLabel>

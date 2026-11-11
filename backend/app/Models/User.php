@@ -7,6 +7,7 @@ use App\Services\ContextoFazenda;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -31,6 +32,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'ativo' => 'boolean',
+            'admin_plataforma' => 'boolean',
         ];
     }
 
@@ -50,6 +52,30 @@ class User extends Authenticatable
     public function vinculos(): HasMany
     {
         return $this->hasMany(FazendaUsuario::class);
+    }
+
+    /** Clientes que o usuário gerencia (papel DONO). */
+    public function clientesGerenciados(): BelongsToMany
+    {
+        return $this->belongsToMany(Cliente::class, 'cliente_usuario')->withPivot('papel')->withTimestamps();
+    }
+
+    public function ehDonoDe(Cliente|int|null $cliente): bool
+    {
+        $id = $cliente instanceof Cliente ? $cliente->id : $cliente;
+
+        return $id !== null && $this->clientesGerenciados()->whereKey($id)->exists();
+    }
+
+    /** Tem acesso a fazenda de outro cliente (ex.: veterinário que atende vários produtores)? */
+    public function acessaOutroCliente(int $clienteId): bool
+    {
+        return $this->vinculos()->whereHas('fazenda', fn ($q) => $q->where('cliente_id', '!=', $clienteId))->exists();
+    }
+
+    public function acessosSuporte(): HasMany
+    {
+        return $this->hasMany(AcessoSuporte::class);
     }
 
     /** Vínculo com a fazenda ativa (null fora de uma fazenda ou sem acesso a ela). */

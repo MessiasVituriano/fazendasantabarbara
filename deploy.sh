@@ -35,6 +35,9 @@ docker compose -f "$COMPOSE_FILE" build app
 echo "==> Subindo containers e aguardando a aplicacao responder..."
 docker compose -f "$COMPOSE_FILE" up -d --force-recreate --wait --wait-timeout 180 app
 
+echo "==> Subindo o backup diario..."
+docker compose -f "$COMPOSE_FILE" up -d backup
+
 echo "==> Limpando imagens antigas..."
 docker image prune -f
 # Roda depois do build: o que este deploy usou fica em cache; o que esta parado ha 3 dias sai.

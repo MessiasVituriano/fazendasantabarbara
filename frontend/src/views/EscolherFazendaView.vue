@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ChevronRight, LogOut, Wheat } from '@lucide/vue'
+import { ChevronRight, LogOut, Settings, Wheat } from '@lucide/vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,7 +14,7 @@ import { limparLeituras } from '../offline/cache'
 /** Escolha da fazenda de trabalho, para quem tem acesso a mais de uma. */
 const route = useRoute()
 const router = useRouter()
-const { fazendas, fazendaId, atualizarFazendas, encerrar } = useSessao()
+const { fazendas, fazendaId, atualizarFazendas, encerrar, admin } = useSessao()
 const { produto } = useSistema()
 const atualizando = ref(false)
 
@@ -57,13 +57,16 @@ async function sair() {
             <span class="min-w-0 flex-1">
               <span class="block truncate font-medium">{{ f.nome }}</span>
             </span>
-            <Badge variant="secondary">{{ f.perfil_label }}</Badge>
+            <Badge :variant="f.suporte ? 'outline' : 'secondary'">{{ f.perfil_label }}</Badge>
             <ChevronRight class="size-4 text-muted-foreground" />
           </button>
           <p v-if="!fazendas.length && !atualizando" class="py-4 text-center text-sm text-muted-foreground">
             Você não tem acesso a nenhuma fazenda. Fale com o gestor.
           </p>
-          <Button variant="ghost" class="mt-2 justify-self-center text-muted-foreground" @click="sair"><LogOut /> Sair</Button>
+          <div class="mt-2 flex justify-center gap-2">
+            <Button v-if="admin" variant="ghost" class="text-muted-foreground" @click="router.push('/admin')"><Settings /> Administração</Button>
+            <Button variant="ghost" class="text-muted-foreground" @click="sair"><LogOut /> Sair</Button>
+          </div>
         </CardContent>
       </Card>
     </div>

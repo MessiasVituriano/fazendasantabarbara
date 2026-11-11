@@ -19,6 +19,7 @@ RUN npm run build
 FROM php:8.4-fpm
 
 # GD precisa de JPEG e WebP: as fotos dos animais sao convertidas para WebP.
+# zip: exportacao dos dados do cliente (LGPD).
 RUN apt-get update && apt-get install -y \
     curl \
     libjpeg62-turbo-dev \
@@ -27,12 +28,13 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libwebp-dev \
     libxml2-dev \
+    libzip-dev \
     nginx \
     supervisor \
     unzip \
     zip \
     && docker-php-ext-configure gd --with-jpeg --with-webp \
-    && docker-php-ext-install bcmath exif gd mbstring opcache pcntl pdo_pgsql pgsql \
+    && docker-php-ext-install bcmath exif gd mbstring opcache pcntl pdo_pgsql pgsql zip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
