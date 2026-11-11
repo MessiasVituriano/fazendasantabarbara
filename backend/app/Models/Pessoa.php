@@ -4,13 +4,14 @@ namespace App\Models;
 
 use App\Enums\TipoPessoa;
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /** Fornecedor e/ou cliente (comprador de gado, casa agropecuária, transportador...) ou investidor/sócio. */
 class Pessoa extends Model
 {
-    use Auditavel, HasFactory;
+    use Auditavel, HasFactory, PertenceAFazenda;
 
     protected $table = 'pessoas';
 

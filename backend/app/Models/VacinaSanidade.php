@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\Data;
 use App\Enums\TipoProdutoSanitario;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Support\Carbon;
 
 class VacinaSanidade extends Model
 {
-    use HasFactory;
+    use HasFactory, PertenceAFazenda;
 
     protected $table = 'vacinas_sanidade';
 

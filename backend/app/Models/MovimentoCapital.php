@@ -6,6 +6,7 @@ use App\Casts\Data;
 use App\Enums\FormaPagamento;
 use App\Enums\TipoMovimentoCapital;
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class MovimentoCapital extends Model
 {
-    use Auditavel, HasFactory;
+    use Auditavel, HasFactory, PertenceAFazenda;
 
     protected $table = 'movimentos_capital';
 

@@ -8,7 +8,7 @@ Monorepo com a API Laravel (`backend/`) e o painel Vue 3 (`frontend/`), conforme
 # Back-end (PostgreSQL 16+; ajuste DB_* em backend/.env)
 cd backend
 createdb fazenda
-php artisan migrate --seed          # --seed carrega rebanho e financeiro de demonstração (ignorado em produção)
+php artisan migrate --seed          # --seed cria a fazenda de demonstração (id 2) com rebanho e financeiro (ignorado em produção)
 php artisan serve                   # http://127.0.0.1:8000
 
 # Front-end (Vue 3 + shadcn-vue + Tailwind v4)
@@ -63,9 +63,24 @@ O script para com erro se a aplicação não subir.
 | **Caseiro** | Operacional: ordenha, pesagens, eventos reprodutivos, vacinas, fotos e movimentação nos piquetes; consulta rebanho e fichas. Lança/corrige somente os últimos `PECUARIA_DIAS_RETROATIVOS_CASEIRO` dias (padrão 3) |
 
 - Login por **nome de usuário** (e-mail opcional) em `POST /api/login` → token Bearer (Sanctum), válido por 30 dias (`SANCTUM_EXPIRATION`, em minutos).
-- O seeder cria `gestor` / `gestor123` e `caseiro` / `caseiro123` — **apenas para demonstração**.
-- Primeiro gestor em produção: `php artisan pecuaria:criar-gestor admin --nome="Fulano"` (pede a senha).
-- Usuários não são excluídos, são **desativados**; desativar, trocar o perfil ou redefinir a senha encerra as sessões abertas. O sistema impede remover o último gestor ativo.
+- O seeder cria `gestor` / `gestor123` e `caseiro` / `caseiro123` na fazenda de demonstração — **apenas para demonstração**.
+- Primeiro gestor em produção: `php artisan pecuaria:criar-gestor admin --nome="Fulano"` (pede a senha; `--fazenda=ID`, padrão 1).
+- Usuários não são excluídos, são **desativados**; desativar, trocar o perfil ou redefinir a senha encerra as sessões abertas. O sistema impede remover o último gestor ativo da fazenda.
+
+## Fazendas (multipropriedade)
+
+Cada produtor (cliente) tem uma ou mais fazendas, e todo registro pertence a uma fazenda. O login é único; o perfil e a
+situação (ativo/desativado) valem por fazenda. Plano completo em [docs/ROADMAP-MULTIPROPRIEDADE.md](docs/ROADMAP-MULTIPROPRIEDADE.md).
+
+- **Fazenda 1** é a Fazenda Santa Bárbara, criada pela migration com todos os registros que já existiam. **Fazenda 2** é a
+  demonstração, criada pelo seeder.
+- A fazenda da requisição vem do cabeçalho `X-Fazenda: <id>`. Sem ele, vale a única fazenda do usuário; quem tem mais
+  de uma recebe `400 FAZENDA_NAO_INFORMADA`. Fazenda sem vínculo ativo: `403 SEM_ACESSO_FAZENDA`.
+- `POST /api/login` e `GET /api/eu` trazem `fazendas` (id, nome e perfil em cada uma).
+- Registros de outra fazenda não aparecem nas listagens e dão `404` pelo id; validações (`exists`/`unique`) valem dentro da fazenda.
+- No código: models de negócio usam `PertenceAFazenda` (filtro e gravação automáticos pela `ContextoFazenda`); fora de uma
+  requisição (comandos, seeders), use `ContextoFazenda::executarEm($fazenda, fn () => ...)`. Fazendas novas:
+  `ServicoFazenda::criar()`, que já cria as categorias padrão.
 
 ## Registro offline (painel web)
 

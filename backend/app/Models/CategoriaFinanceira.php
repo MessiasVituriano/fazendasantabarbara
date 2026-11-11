@@ -5,12 +5,13 @@ namespace App\Models;
 use App\Enums\GrupoCusto;
 use App\Enums\TipoLancamento;
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CategoriaFinanceira extends Model
 {
-    use Auditavel;
+    use Auditavel, PertenceAFazenda;
 
     protected $table = 'categorias_financeiras';
 

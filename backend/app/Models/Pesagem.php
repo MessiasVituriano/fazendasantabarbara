@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\Data;
+use App\Models\Concerns\PertenceAFazenda;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,7 +13,7 @@ use Illuminate\Support\Carbon;
 
 class Pesagem extends Model
 {
-    use HasFactory;
+    use HasFactory, PertenceAFazenda;
 
     protected $table = 'pesagens';
 

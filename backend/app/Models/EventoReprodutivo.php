@@ -4,13 +4,14 @@ namespace App\Models;
 
 use App\Casts\Data;
 use App\Enums\TipoEventoReprodutivo;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EventoReprodutivo extends Model
 {
-    use HasFactory;
+    use HasFactory, PertenceAFazenda;
 
     protected $table = 'eventos_reprodutivos';
 

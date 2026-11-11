@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Enums\TipoProdutoSanitario;
 use App\Http\Requests\Concerns\LimitaDataDoCaseiro;
+use App\Http\Requests\Concerns\RegrasDaFazenda;
 use App\Models\CategoriaSanitaria;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
@@ -11,7 +12,7 @@ use Illuminate\Validation\Rule;
 
 class RegistrarVacinaRequest extends FormRequest
 {
-    use LimitaDataDoCaseiro;
+    use LimitaDataDoCaseiro, RegrasDaFazenda;
 
     public function rules(): array
     {
@@ -19,12 +20,12 @@ class RegistrarVacinaRequest extends FormRequest
 
         return [
             'uuid' => ['nullable', 'uuid'],
-            'animal_id' => ['required', 'integer', 'exists:animais,id'],
+            'animal_id' => ['required', 'integer', $this->existeNaFazenda('animais')],
             'tipo' => ['required', Rule::enum(TipoProdutoSanitario::class)],
             'categoria_sanitaria_id' => ['nullable', 'integer',
-                Rule::exists('categorias_sanitarias', 'id')->where('tipo', $tipo)->where('ativa', true)],
+                $this->existeNaFazenda('categorias_sanitarias')->where('tipo', $tipo)->where('ativa', true)],
             'produto_sanitario_id' => ['nullable', 'integer',
-                Rule::exists('produtos_sanitarios', 'id')->where('ativo', true)->where(fn (Builder $q) => $q->whereIn(
+                $this->existeNaFazenda('produtos_sanitarios')->where('ativo', true)->where(fn (Builder $q) => $q->whereIn(
                     'categoria_sanitaria_id',
                     CategoriaSanitaria::where('tipo', $tipo)->pluck('id'),
                 ))],

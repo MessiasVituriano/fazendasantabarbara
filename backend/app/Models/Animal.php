@@ -8,6 +8,7 @@ use App\Enums\Categoria;
 use App\Enums\Sexo;
 use App\Enums\StatusGeral;
 use App\Enums\StatusReprodutivo;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Animal extends Model
 {
-    use HasFactory;
+    use HasFactory, PertenceAFazenda;
 
     protected $table = 'animais';
 

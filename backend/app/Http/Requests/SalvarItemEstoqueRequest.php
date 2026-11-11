@@ -4,12 +4,15 @@ namespace App\Http\Requests;
 
 use App\Enums\TipoItemEstoque;
 use App\Enums\UnidadeEstoque;
+use App\Http\Requests\Concerns\RegrasDaFazenda;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /** O saldo não entra aqui: muda só por entradas, saídas e ajustes. */
 class SalvarItemEstoqueRequest extends FormRequest
 {
+    use RegrasDaFazenda;
+
     protected function prepareForValidation(): void
     {
         $minimo = $this->input('estoque_minimo');
@@ -27,7 +30,7 @@ class SalvarItemEstoqueRequest extends FormRequest
         $obrigatorio = $item ? 'sometimes' : 'required';
 
         return [
-            'nome' => [$obrigatorio, 'string', 'max:100', Rule::unique('itens_estoque', 'nome')->ignore($item)],
+            'nome' => [$obrigatorio, 'string', 'max:100', $this->unicoNaFazenda('itens_estoque', 'nome')->ignore($item)],
             'tipo' => [$obrigatorio, Rule::enum(TipoItemEstoque::class)],
             'unidade' => [$obrigatorio, Rule::enum(UnidadeEstoque::class)],
             'estoque_minimo' => ['sometimes', 'numeric', 'decimal:0,3', 'min:0', 'max:99999999999'],

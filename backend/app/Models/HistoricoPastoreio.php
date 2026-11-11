@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use App\Casts\Data;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class HistoricoPastoreio extends Model
 {
+    use PertenceAFazenda;
+
     protected $table = 'historico_pastoreio';
 
     protected $fillable = ['piquete_id', 'animal_id', 'data_entrada', 'data_saida'];

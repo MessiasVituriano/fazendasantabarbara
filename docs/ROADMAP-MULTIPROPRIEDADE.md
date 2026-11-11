@@ -33,23 +33,24 @@ Administrador da plataforma (nossa equipe): cria clientes, suspende, dá suporte
 
 ## Fase 1 — fundação (isolamento por fazenda)
 
-Ao final, a Santa Bárbara funciona exatamente como hoje, já como cliente 1 / fazenda 1.
+Ao final, a Santa Bárbara funciona exatamente como hoje, já como cliente 1 / fazenda 1. A demonstração dos seeders fica
+na fazenda 2 (cliente próprio). Implementada na branch `multipropriedade/fase-1`.
 
-- [ ] Tabelas `clientes`, `fazendas`, `fazenda_usuario` (com o perfil) e `cliente_usuario` (papel DONO).
-- [ ] Perfil sai de `users` e passa para o vínculo; `ExigePerfil` lê o perfil da fazenda ativa.
-- [ ] Middleware da fazenda ativa (`X-Fazenda`) e um contexto acessível ao resto do código.
-- [ ] Trait `PertenceAFazenda`: escopo global + preenchimento de `fazenda_id` ao criar. Aplicar em todos os modelos de negócio
+- [x] Tabelas `clientes`, `fazendas`, `fazenda_usuario` (com o perfil) e `cliente_usuario` (papel DONO).
+- [x] Perfil sai de `users` e passa para o vínculo; `ExigePerfil` lê o perfil da fazenda ativa.
+- [x] Middleware da fazenda ativa (`X-Fazenda`) e um contexto acessível ao resto do código.
+- [x] Trait `PertenceAFazenda`: escopo global + preenchimento de `fazenda_id` ao criar. Aplicar em todos os modelos de negócio
   (cerca de 24 tabelas). A busca por id na URL passa a dar 404 para registros de outra fazenda.
-- [ ] Unicidade por fazenda, nas migrations e nos Requests: brinco, nome do lote, identificação do piquete, nome do item
+- [x] Unicidade por fazenda, nas migrations e nos Requests: brinco, nome do lote, identificação do piquete, nome do item
   de estoque, nome da conta, categorias `(tipo, nome)` e `chave`. `users.usuario` continua global.
-- [ ] As 18 regras `exists:` dos Requests filtram pela fazenda ativa (senão dá para apontar para a conta ou o animal de outra).
-- [ ] Categorias financeiras e sanitárias por fazenda; o catálogo padrão, que hoje vem da migration, passa a ser criado
+- [x] As 18 regras `exists:` dos Requests filtram pela fazenda ativa (senão dá para apontar para a conta ou o animal de outra).
+- [x] Categorias financeiras e sanitárias por fazenda; o catálogo padrão, que hoje vem da migration, passa a ser criado
   junto com cada fazenda.
-- [ ] `DesmamarBezerros` e o agendador percorrem as fazendas.
-- [ ] `Auditavel` grava `fazenda_id` no histórico.
-- [ ] Migração da produção: criar cliente e fazenda 1, adicionar `fazenda_id` opcional, preencher com 1, tornar obrigatório,
+- [x] `DesmamarBezerros` e o agendador percorrem as fazendas.
+- [x] `Auditavel` grava `fazenda_id` no histórico (o histórico é um registro da fazenda).
+- [x] Migração da produção: criar cliente e fazenda 1, adicionar `fazenda_id` opcional, preencher com 1, tornar obrigatório,
   vincular os usuários atuais com o perfil que já têm. Ver "Registros existentes" abaixo.
-- [ ] **Testes de isolamento:** duas fazendas de clientes diferentes; para cada endpoint, garantir que uma não lê, não grava
+- [x] **Testes de isolamento:** duas fazendas de clientes diferentes; para cada endpoint, garantir que uma não lê, não grava
   e não referencia dados da outra. Esses testes são o critério de pronto da fase.
 
 ### Registros existentes
@@ -59,12 +60,14 @@ atuais recebem `fazenda_id = 1`. IDs, datas, valores, fotos e anexos continuam o
 
 - [ ] **Backup do banco e do volume de arquivos** imediatamente antes do deploy, com restauração testada.
 - [ ] **Ensaio numa cópia da produção:** rodar a migração e conferir a contagem de registros por tabela antes e depois
-  (animais, pesagens, ordenhas, lançamentos, estoque…), que precisa bater exatamente.
-- [ ] **Migração em etapas e reversível:** coluna opcional → preenchimento → obrigatória; o `down` remove só o que foi
+  (animais, pesagens, ordenhas, lançamentos, estoque…), que precisa bater exatamente. Já ensaiado em PostgreSQL 16 com os
+  dados de demonstração no esquema antigo: contagens iguais nas 22 tabelas, ida e volta (`migrate:rollback --step=2`);
+  falta repetir com a cópia real da produção antes do deploy.
+- [x] **Migração em etapas e reversível:** coluna opcional → preenchimento → obrigatória; o `down` remove só o que foi
   adicionado.
-- [ ] **Usuários e sessões:** `gestor`, `caseiro` e demais continuam com o mesmo login e senha, vinculados à fazenda 1 com
+- [x] **Usuários e sessões:** `gestor`, `caseiro` e demais continuam com o mesmo login e senha, vinculados à fazenda 1 com
   o perfil atual; os tokens abertos continuam válidos.
-- [ ] **Fila offline dos aparelhos:** registros feitos sem internet antes da atualização chegam sem `X-Fazenda`. Enquanto
+- [x] **Fila offline dos aparelhos:** registros feitos sem internet antes da atualização chegam sem `X-Fazenda`. Enquanto
   o usuário tiver uma fazenda só, a API usa essa fazenda quando o cabeçalho faltar, para nenhum registro pendente ser
   recusado.
 - [ ] **Arquivos:** fotos e anexos são copiados para `fazendas/1/` e o caminho no banco é atualizado; os originais só são

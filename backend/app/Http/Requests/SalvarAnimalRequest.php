@@ -7,18 +7,21 @@ use App\Enums\Categoria;
 use App\Enums\Sexo;
 use App\Enums\StatusGeral;
 use App\Enums\StatusReprodutivo;
+use App\Http\Requests\Concerns\RegrasDaFazenda;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class SalvarAnimalRequest extends FormRequest
 {
+    use RegrasDaFazenda;
+
     public function rules(): array
     {
         $animal = $this->route('animal');
         $obrigatorio = $animal ? 'sometimes' : 'required';
 
         return [
-            'brinco' => [$obrigatorio, 'string', 'max:50', Rule::unique('animais', 'brinco')->ignore($animal)],
+            'brinco' => [$obrigatorio, 'string', 'max:50', $this->unicoNaFazenda('animais', 'brinco')->ignore($animal)],
             'nome' => ['nullable', 'string', 'max:100'],
             'sexo' => [$obrigatorio, Rule::enum(Sexo::class)],
             'data_nascimento' => [$obrigatorio, 'date', 'before_or_equal:today'],
@@ -28,7 +31,7 @@ class SalvarAnimalRequest extends FormRequest
             'status_geral' => ['sometimes', Rule::enum(StatusGeral::class)],
             'mae_id' => [
                 'nullable', 'integer',
-                Rule::exists('animais', 'id')->where('sexo', Sexo::F->value),
+                $this->existeNaFazenda('animais')->where('sexo', Sexo::F->value),
                 Rule::notIn([$animal?->id]),
             ],
         ];

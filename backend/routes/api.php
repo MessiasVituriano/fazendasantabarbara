@@ -35,7 +35,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('login', [AuthController::class, 'login'])->name('login');
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'fazenda'])->group(function () {
     // Sessão
     Route::get('eu', [AuthController::class, 'eu'])->name('eu');
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');

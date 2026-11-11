@@ -2,18 +2,20 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\RegrasDaFazenda;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class SalvarLoteRequest extends FormRequest
 {
+    use RegrasDaFazenda;
+
     public function rules(): array
     {
         $lote = $this->route('lote');
         $obrigatorio = $lote ? 'sometimes' : 'required';
 
         return [
-            'nome' => [$obrigatorio, 'string', 'max:80', Rule::unique('lotes', 'nome')->ignore($lote)],
+            'nome' => [$obrigatorio, 'string', 'max:80', $this->unicoNaFazenda('lotes', 'nome')->ignore($lote)],
             'data_formacao' => [$obrigatorio, 'date_format:Y-m-d'],
             'categoria' => ['nullable', 'string', 'max:60'],
             'origem' => ['nullable', 'string', 'max:120'],
