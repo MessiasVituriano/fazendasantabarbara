@@ -170,7 +170,7 @@ function aplicacaoSalva(aplicacao) {
       <Card v-if="graficoPeso">
         <CardHeader class="flex flex-wrap items-start justify-between gap-2">
           <CardTitle class="flex items-center gap-2"><Scale class="size-4" /> Crescimento</CardTitle>
-          <component :is="ehGestor ? 'RouterLink' : 'span'" v-if="crescimento.lote" :to="ehGestor ? `/lotes?lote=${crescimento.lote.id}` : undefined"
+          <component :is="ehGestor ? 'RouterLink' : 'span'" v-if="crescimento.lote" :to="ehGestor ? `/lotes/${crescimento.lote.id}` : undefined"
                      class="flex items-center gap-1.5 text-sm text-muted-foreground" :class="{ 'hover:text-foreground': ehGestor }">
             <Boxes class="size-4" /> {{ crescimento.lote.nome }}
           </component>
