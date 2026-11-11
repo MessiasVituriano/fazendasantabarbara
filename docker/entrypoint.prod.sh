@@ -15,6 +15,10 @@ php artisan view:cache
 
 php artisan migrate --force
 
+# Fotos e anexos antigos vão para a pasta da fazenda (copia, confere, atualiza o banco e só então apaga o original).
+# Sem nada a mover, termina na hora.
+php artisan pecuaria:organizar-arquivos
+
 # Os comandos acima rodam como root; o PHP-FPM e o agendador rodam como www-data.
 chown -R www-data:www-data storage bootstrap/cache
 

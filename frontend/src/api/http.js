@@ -10,13 +10,18 @@ const http = axios.create({
 
 const sessao = useSessao()
 
+/** Cabeçalho com a fazenda da requisição; a fila offline manda o da fazenda em que o registro foi feito. */
+export const CABECALHO_FAZENDA = 'X-Fazenda'
+
 http.interceptors.request.use((config) => {
   if (sessao.token.value) config.headers.Authorization = `Bearer ${sessao.token.value}`
+  if (sessao.fazendaId.value && !config.headers[CABECALHO_FAZENDA]) config.headers[CABECALHO_FAZENDA] = sessao.fazendaId.value
   return config
 })
 
 const ehLeitura = (config) => config?.method === 'get' && (!config.responseType || config.responseType === 'json')
-const chaveDaLeitura = (config) => http.getUri(config)
+// Cada fazenda tem as próprias leituras guardadas: trocar de fazenda sem internet não mostra dados da outra.
+const chaveDaLeitura = (config) => `${config.headers?.[CABECALHO_FAZENDA] ?? '-'}|${http.getUri(config)}`
 
 /**
  * Leituras (GET) bem-sucedidas ficam guardadas no aparelho; sem conexão, a última resposta
@@ -25,7 +30,7 @@ const chaveDaLeitura = (config) => http.getUri(config)
  * Normaliza erros da API (padrão JSON API) para uso direto nos formulários:
  *   erro.mensagens -> lista de textos legíveis
  *   erro.campos    -> { 'registros.0.animal_id': 'mensagem', ... } a partir de source.pointer
- * 401 (sessão expirada/encerrada) leva de volta ao login.
+ * 401 (sessão expirada/encerrada) leva de volta ao login; sem acesso à fazenda, à escolha de fazenda.
  */
 http.interceptors.response.use(
   (resposta) => {
@@ -50,6 +55,12 @@ http.interceptors.response.use(
     } else {
       erro.mensagens = [erro.response ? 'Erro inesperado no servidor.' : 'Sem conexão com o servidor.']
       erro.campos = {}
+    }
+    // Sem acesso à fazenda escolhida (ou ela não foi informada): volta para a escolha de fazenda.
+    const codigo = erros?.[0]?.code
+    if ((codigo === 'SEM_ACESSO_FAZENDA' || codigo === 'FAZENDA_NAO_INFORMADA') && !erro.config?.fila) {
+      sessao.esquecerFazenda()
+      if (!location.pathname.startsWith('/fazendas')) location.assign('/fazendas')
     }
     if (erro.response?.status === 401 && !erro.config?.url?.endsWith('/login')) {
       sessao.encerrar()

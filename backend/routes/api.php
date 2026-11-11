@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\PessoaController;
 use App\Http\Controllers\Api\PiqueteController;
 use App\Http\Controllers\Api\ProducaoLeiteController;
 use App\Http\Controllers\Api\ProdutoSanitarioController;
+use App\Http\Controllers\Api\SistemaController;
 use App\Http\Controllers\Api\TimelineAnimalController;
 use App\Http\Controllers\Api\UsuarioController;
 use App\Http\Controllers\Api\VacinaController;
@@ -34,11 +35,15 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::post('login', [AuthController::class, 'login'])->name('login');
+Route::get('sistema', SistemaController::class)->name('sistema');
 
-Route::middleware(['auth:sanctum', 'fazenda'])->group(function () {
-    // Sessão
+// Sessão: funcionam antes de escolher a fazenda (quem tem várias ainda não mandou X-Fazenda).
+Route::middleware(['auth:sanctum', 'fazenda:opcional'])->group(function () {
     Route::get('eu', [AuthController::class, 'eu'])->name('eu');
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+});
+
+Route::middleware(['auth:sanctum', 'fazenda'])->group(function () {
 
     Route::get('opcoes', OpcoesController::class);
 

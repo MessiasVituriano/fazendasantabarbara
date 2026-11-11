@@ -7,6 +7,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/entrar', name: 'entrar', component: () => import('./views/EntrarView.vue'), meta: { publica: true } },
+    { path: '/fazendas', name: 'fazendas', component: () => import('./views/EscolherFazendaView.vue'), meta: { semFazenda: true } },
     { path: '/', redirect: '/financeiro' },
     { path: '/painel', name: 'painel', component: () => import('./views/PainelView.vue'), meta: SO_GESTOR },
     { path: '/animais', name: 'animais', component: () => import('./views/AnimaisView.vue') },
@@ -35,9 +36,16 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  const { autenticado, usuario } = useSessao()
-  if (to.meta.publica) return autenticado.value && to.name === 'entrar' ? inicioDoPerfil(usuario.value.perfil) : true
+  const { autenticado, usuario, fazendas, fazendaId } = useSessao()
+  // Quem tem mais de uma fazenda escolhe uma antes de entrar nas telas.
+  const precisaEscolher = !fazendaId.value && fazendas.value.length > 1
+  if (to.meta.publica) {
+    if (!autenticado.value || to.name !== 'entrar') return true
+    return precisaEscolher ? { name: 'fazendas' } : inicioDoPerfil(usuario.value.perfil)
+  }
   if (!autenticado.value) return { name: 'entrar', query: { volta: to.fullPath } }
+  if (to.meta.semFazenda) return true
+  if (precisaEscolher) return { name: 'fazendas', query: { volta: to.fullPath } }
   // Área restrita: o caseiro vai para o operacional.
   if (to.meta.perfis && !to.meta.perfis.includes(usuario.value.perfil)) return inicioDoPerfil(usuario.value.perfil)
   return true

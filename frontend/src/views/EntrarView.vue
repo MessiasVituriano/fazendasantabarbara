@@ -9,10 +9,12 @@ import { Label } from '@/components/ui/label'
 import http from '../api/http'
 import AlertaErros from '../components/AlertaErros.vue'
 import { inicioDoPerfil, useSessao } from '../composables/useSessao'
+import { useSistema } from '../composables/useSistema'
 
 const router = useRouter()
 const route = useRoute()
-const { iniciar } = useSessao()
+const { iniciar, fazendaId, usuario: logado } = useSessao()
+const { produto } = useSistema()
 
 const usuario = ref('')
 const senha = ref('')
@@ -24,9 +26,11 @@ async function entrar() {
   erros.value = []
   try {
     const { data } = await http.post('/login', { usuario: usuario.value, senha: senha.value, dispositivo: 'web' })
-    iniciar(data.data.token, data.data.usuario)
+    iniciar(data.data.token, data.data.usuario, data.data.fazendas)
     const volta = typeof route.query.volta === 'string' && route.query.volta.startsWith('/') ? route.query.volta : null
-    await router.replace(volta ?? inicioDoPerfil(data.data.usuario.perfil))
+    // Com mais de uma fazenda, primeiro escolhe em qual vai trabalhar.
+    if (!fazendaId.value) await router.replace({ name: 'fazendas', query: volta ? { volta } : {} })
+    else await router.replace(volta ?? inicioDoPerfil(logado.value.perfil))
   } catch (e) {
     erros.value = e.mensagens
     senha.value = ''
@@ -42,8 +46,8 @@ async function entrar() {
       <div class="flex flex-col items-center gap-3 text-center">
         <span class="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Wheat class="size-7" /></span>
         <div>
-          <h1 class="text-xl font-semibold">Fazenda Santa Bárbara</h1>
-          <p class="text-sm text-muted-foreground">Gestão Agropecuária</p>
+          <h1 class="text-xl font-semibold">{{ produto }}</h1>
+          <p class="text-sm text-muted-foreground">Entre para acessar a sua fazenda</p>
         </div>
       </div>
       <Card>

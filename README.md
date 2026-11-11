@@ -76,7 +76,13 @@ situação (ativo/desativado) valem por fazenda. Plano completo em [docs/ROADMAP
   demonstração, criada pelo seeder.
 - A fazenda da requisição vem do cabeçalho `X-Fazenda: <id>`. Sem ele, vale a única fazenda do usuário; quem tem mais
   de uma recebe `400 FAZENDA_NAO_INFORMADA`. Fazenda sem vínculo ativo: `403 SEM_ACESSO_FAZENDA`.
-- `POST /api/login` e `GET /api/eu` trazem `fazendas` (id, nome e perfil em cada uma).
+- `POST /api/login` e `GET /api/eu` trazem `fazendas` (id, nome e perfil em cada uma); `GET /api/eu` e o logout funcionam
+  antes de escolher a fazenda. `GET /api/sistema` (público) traz o nome do produto (`PECUARIA_PRODUTO`).
+- No painel, quem tem mais de uma fazenda escolhe uma depois do login (`/fazendas`) e troca pelo menu do usuário. As
+  leituras guardadas no aparelho são separadas por fazenda, e cada registro da fila offline sobe para a fazenda em que
+  foi feito, mesmo que o usuário troque de fazenda antes de sincronizar.
+- Fotos e anexos ficam em `fazendas/{id}/...`. Os gravados antes disso são movidos por `php artisan pecuaria:organizar-arquivos`
+  (roda no início do container; copia, confere o tamanho, atualiza o banco e só então apaga o original).
 - Registros de outra fazenda não aparecem nas listagens e dão `404` pelo id; validações (`exists`/`unique`) valem dentro da fazenda.
 - No código: models de negócio usam `PertenceAFazenda` (filtro e gravação automáticos pela `ContextoFazenda`); fora de uma
   requisição (comandos, seeders), use `ContextoFazenda::executarEm($fazenda, fn () => ...)`. Fazendas novas:

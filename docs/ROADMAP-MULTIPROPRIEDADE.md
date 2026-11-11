@@ -70,17 +70,20 @@ atuais recebem `fazenda_id = 1`. IDs, datas, valores, fotos e anexos continuam o
 - [x] **Fila offline dos aparelhos:** registros feitos sem internet antes da atualização chegam sem `X-Fazenda`. Enquanto
   o usuário tiver uma fazenda só, a API usa essa fazenda quando o cabeçalho faltar, para nenhum registro pendente ser
   recusado.
-- [ ] **Arquivos:** fotos e anexos são copiados para `fazendas/1/` e o caminho no banco é atualizado; os originais só são
+- [x] **Arquivos:** fotos e anexos são copiados para `fazendas/1/` e o caminho no banco é atualizado; os originais só são
   apagados depois de conferidos (fase 2).
 
 ## Fase 2 — front com várias fazendas
 
-- [ ] Nome da fazenda e do produto vindos da API; sai o "Fazenda Santa Bárbara" fixo de `Marca.vue`, da tela de login e do
+Implementada na branch `multipropriedade/fase-2`. O nome do produto é `PECUARIA_PRODUTO` (padrão "Gestão Agropecuária")
+até a marca ser definida; os arquivos antigos são movidos por `pecuaria:organizar-arquivos`, que roda no início do container.
+
+- [x] Nome da fazenda e do produto vindos da API; sai o "Fazenda Santa Bárbara" fixo de `Marca.vue`, da tela de login e do
   `index.html`.
-- [ ] Seletor de fazenda no topo (só aparece com mais de uma); a escolha fica na sessão.
-- [ ] **Offline:** cache `cache-api:` separado por fazenda; cada item da fila guarda a fazenda em que foi registrado e sobe
+- [x] Seletor de fazenda no topo (só aparece com mais de uma); a escolha fica na sessão.
+- [x] **Offline:** cache `cache-api:` separado por fazenda; cada item da fila guarda a fazenda em que foi registrado e sobe
   para ela, mesmo que o usuário tenha trocado de fazenda antes de sincronizar.
-- [ ] Fotos e anexos gravados em `fazendas/{id}/...`; mover os arquivos existentes para `fazendas/1/`.
+- [x] Fotos e anexos gravados em `fazendas/{id}/...`; mover os arquivos existentes para `fazendas/1/`.
 
 ## Fase 3 — produto vendável
 
