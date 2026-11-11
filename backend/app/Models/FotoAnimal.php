@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\Data;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\Storage;
 
 class FotoAnimal extends Model
 {
+    use PertenceAFazenda;
+
     protected $table = 'fotos_animal';
 
     protected $fillable = ['animal_id', 'caminho', 'caminho_miniatura', 'largura', 'altura', 'legenda', 'data_registro', 'principal'];

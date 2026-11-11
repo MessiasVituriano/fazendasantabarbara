@@ -6,6 +6,7 @@ use App\Enums\Sexo;
 use App\Enums\StatusGeral;
 use App\Enums\TipoEventoReprodutivo;
 use App\Http\Requests\Concerns\LimitaDataDoCaseiro;
+use App\Http\Requests\Concerns\RegrasDaFazenda;
 use App\Models\Animal;
 use App\Models\EventoReprodutivo;
 use Illuminate\Validation\Rule;
@@ -13,7 +14,7 @@ use Illuminate\Validation\Validator;
 
 class RegistrarEventoReprodutivoRequest extends RequisicaoEmLote
 {
-    use LimitaDataDoCaseiro;
+    use LimitaDataDoCaseiro, RegrasDaFazenda;
 
     protected function regrasDoRegistro(): array
     {
@@ -21,7 +22,7 @@ class RegistrarEventoReprodutivoRequest extends RequisicaoEmLote
 
         return [
             'uuid' => ['nullable', 'uuid', 'distinct'],
-            'animal_id' => ['required', 'integer', 'exists:animais,id'],
+            'animal_id' => ['required', 'integer', $this->existeNaFazenda('animais')],
             'tipo_evento' => ['required', Rule::enum(TipoEventoReprodutivo::class)],
             'data_evento' => ['required', 'date', 'before_or_equal:today', ...$this->limiteDoCaseiro()],
             'observacoes' => ['nullable', 'string', 'max:2000'],

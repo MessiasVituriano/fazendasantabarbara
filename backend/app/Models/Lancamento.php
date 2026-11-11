@@ -8,6 +8,7 @@ use App\Enums\GrupoCusto;
 use App\Enums\SituacaoLancamento;
 use App\Enums\TipoLancamento;
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,7 +27,7 @@ use Illuminate\Support\Carbon;
  */
 class Lancamento extends Model
 {
-    use Auditavel, HasFactory;
+    use Auditavel, HasFactory, PertenceAFazenda;
 
     protected $table = 'lancamentos';
 

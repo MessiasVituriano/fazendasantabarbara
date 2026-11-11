@@ -25,7 +25,7 @@ class AnexoLancamentoController extends Controller
         $arquivo = $request->file('arquivo');
         $anexo = $lancamento->anexos()->create([
             'nome_original' => mb_substr($arquivo->getClientOriginalName(), 0, 255),
-            'caminho' => $arquivo->store("lancamentos/{$lancamento->id}", AnexoLancamento::disco()),
+            'caminho' => $arquivo->store("fazendas/{$lancamento->fazenda_id}/lancamentos/{$lancamento->id}", AnexoLancamento::disco()),
             'mime' => $arquivo->getMimeType() ?? 'application/octet-stream',
             'tamanho' => $arquivo->getSize(),
             'enviado_por' => Auth::id(),

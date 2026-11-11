@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\Periodo;
 use App\Enums\Sexo;
 use App\Http\Requests\Concerns\LimitaDataDoCaseiro;
+use App\Http\Requests\Concerns\RegrasDaFazenda;
 use App\Models\Animal;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -16,7 +17,7 @@ use Illuminate\Validation\Validator;
  */
 class SalvarOrdenhaRequest extends FormRequest
 {
-    use LimitaDataDoCaseiro;
+    use LimitaDataDoCaseiro, RegrasDaFazenda;
 
     public function rules(): array
     {
@@ -24,7 +25,7 @@ class SalvarOrdenhaRequest extends FormRequest
             'data_pesagem' => ['required', 'date', 'before_or_equal:today', ...$this->limiteDoCaseiro()],
             'periodo' => ['required', Rule::enum(Periodo::class)],
             'registros' => ['required', 'array', 'list', 'min:1', 'max:1000'],
-            'registros.*.animal_id' => ['required', 'integer', 'distinct', 'exists:animais,id'],
+            'registros.*.animal_id' => ['required', 'integer', 'distinct', $this->existeNaFazenda('animais')],
             'registros.*.quantidade_litros' => ['present', 'nullable', 'numeric', 'min:0', 'max:999.99'],
         ];
     }

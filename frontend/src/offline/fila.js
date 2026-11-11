@@ -1,6 +1,6 @@
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
-import http from '../api/http'
+import http, { CABECALHO_FAZENDA } from '../api/http'
 import { useSessao } from '../composables/useSessao'
 import { novoUuid } from '../formatos'
 import { online, semConexao } from './conexao'
@@ -17,7 +17,10 @@ import { online, semConexao } from './conexao'
  * rodada. Recusas do servidor (ex.: validação) ficam marcadas com a mensagem para o usuário
  * revisar e descartar, sem travar o restante da fila.
  *
- * Item: { id, usuarioId, metodo, url, dados, descricao, criadoEm, estado: 'pendente'|'erro', erros: [] }
+ * Cada item sobe para a fazenda em que foi registrado, mesmo que o usuário tenha trocado de fazenda
+ * antes de sincronizar. Itens antigos, sem fazenda, sobem sem o cabeçalho: a API usa a única fazenda do usuário.
+ *
+ * Item: { id, usuarioId, fazendaId, fazendaNome, metodo, url, dados, descricao, criadoEm, estado: 'pendente'|'erro', erros: [] }
  */
 const CHAVE = 'fila-offline'
 const TEMPO_LIMITE_MS = 20000
@@ -46,11 +49,15 @@ const doUsuario = computed(() => itens.value.filter((i) => i.usuarioId === sessa
 const pendentes = computed(() => doUsuario.value.filter((i) => i.estado === 'pendente'))
 const comErro = computed(() => doUsuario.value.filter((i) => i.estado === 'erro'))
 
-const requisitar = (item) => http.request({ method: item.metodo, url: item.url, data: item.dados, timeout: TEMPO_LIMITE_MS })
+const requisitar = (item) => http.request({
+  method: item.metodo, url: item.url, data: item.dados, timeout: TEMPO_LIMITE_MS, fila: true,
+  headers: item.fazendaId ? { [CABECALHO_FAZENDA]: item.fazendaId } : {},
+})
 
 function guardar({ metodo, url, dados, descricao }) {
   const item = {
     id: novoUuid(), usuarioId: sessao.usuario.value?.id ?? null,
+    fazendaId: sessao.fazendaId.value, fazendaNome: sessao.fazendaAtual.value?.nome ?? null,
     metodo, url, dados, descricao, criadoEm: new Date().toISOString(), estado: 'pendente', erros: [],
   }
   itens.value.push(item)

@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChevronDown, LogOut, Monitor, Moon, Sun, UserRound } from '@lucide/vue'
+import { ChevronDown, LogOut, Monitor, Moon, Sun, UserRound, Wheat } from '@lucide/vue'
 import { useColorMode } from '@vueuse/core'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,12 +11,19 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import http from '@/api/http'
 import { useSessao } from '@/composables/useSessao'
+import { entrarNaFazenda } from '@/composables/useTrocaFazenda'
 import { limparLeituras } from '@/offline/cache'
 import { useFilaOffline } from '@/offline/fila'
 
-/** Canto superior direito: alternar tema e menu do usuário (perfil, tema, sair). */
+/** Canto superior direito: alternar tema e menu do usuário (perfil, fazenda, tema, sair). */
 const router = useRouter()
-const { usuario, encerrar } = useSessao()
+const { usuario, encerrar, fazendas, fazendaId } = useSessao()
+
+// Troca de fazenda: só aparece para quem tem mais de uma.
+const fazendaEscolhida = computed({
+  get: () => fazendaId.value,
+  set: (id) => id !== fazendaId.value && entrarNaFazenda(id),
+})
 
 // 'auto' segue o tema do sistema operacional.
 const { store: tema, state: temaEfetivo } = useColorMode({ emitAuto: true })
@@ -68,6 +75,15 @@ async function sair() {
         <DropdownMenuSeparator />
         <DropdownMenuItem @select="router.push('/perfil')"><UserRound /> Meu perfil</DropdownMenuItem>
         <DropdownMenuSeparator />
+        <template v-if="fazendas.length > 1">
+          <DropdownMenuLabel class="text-xs text-muted-foreground">Fazenda</DropdownMenuLabel>
+          <DropdownMenuRadioGroup v-model="fazendaEscolhida">
+            <DropdownMenuRadioItem v-for="f in fazendas" :key="f.id" :value="f.id">
+              <Wheat /> <span class="min-w-0 flex-1 truncate">{{ f.nome }}</span>
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
+        </template>
         <DropdownMenuLabel class="text-xs text-muted-foreground">Tema</DropdownMenuLabel>
         <DropdownMenuRadioGroup v-model="tema">
           <DropdownMenuRadioItem v-for="t in TEMAS" :key="t.value" :value="t.value"><component :is="t.icone" /> {{ t.label }}</DropdownMenuRadioItem>

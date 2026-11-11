@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
@@ -9,6 +10,8 @@ use Illuminate\Support\Facades\Storage;
 /** Comprovante (nota, boleto, recibo) guardado em disco privado; baixado só com autenticação. */
 class AnexoLancamento extends Model
 {
+    use PertenceAFazenda;
+
     protected $table = 'anexos_lancamento';
 
     protected $fillable = ['lancamento_id', 'nome_original', 'caminho', 'mime', 'tamanho', 'enviado_por'];

@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Enums\StatusPiquete;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Piquete extends Model
 {
-    use HasFactory;
+    use HasFactory, PertenceAFazenda;
 
     protected $table = 'piquetes';
 

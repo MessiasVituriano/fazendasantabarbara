@@ -5,11 +5,14 @@ namespace App\Http\Requests;
 use App\Enums\FormaPagamento;
 use App\Enums\GrupoCusto;
 use App\Enums\TipoLancamento;
+use App\Http\Requests\Concerns\RegrasDaFazenda;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class SalvarLancamentoRequest extends FormRequest
 {
+    use RegrasDaFazenda;
+
     protected function prepareForValidation(): void
     {
         // Aceita "1.234,56" e "1234,56" vindos de formulário.
@@ -30,13 +33,13 @@ class SalvarLancamentoRequest extends FormRequest
         return [
             'tipo' => [$obrigatorio, Rule::enum(TipoLancamento::class)],
             'descricao' => [$obrigatorio, 'string', 'max:160'],
-            'categoria_id' => [$obrigatorio, 'integer', 'exists:categorias_financeiras,id'],
+            'categoria_id' => [$obrigatorio, 'integer', $this->existeNaFazenda('categorias_financeiras')],
             'grupo_custo' => ['nullable', Rule::enum(GrupoCusto::class)],
             'valor' => [$obrigatorio, 'numeric', 'decimal:0,2', 'gt:0', 'max:999999999999.99'],
             'data_competencia' => [$obrigatorio, 'date_format:Y-m-d'],
             'data_vencimento' => [$obrigatorio, 'date_format:Y-m-d'],
-            'pessoa_id' => ['nullable', 'integer', 'exists:pessoas,id'],
-            'lote_id' => ['nullable', 'integer', 'exists:lotes,id'],
+            'pessoa_id' => ['nullable', 'integer', $this->existeNaFazenda('pessoas')],
+            'lote_id' => ['nullable', 'integer', $this->existeNaFazenda('lotes')],
             'documento' => ['nullable', 'string', 'max:60'],
             'observacoes' => ['nullable', 'string', 'max:2000'],
 
@@ -44,7 +47,7 @@ class SalvarLancamentoRequest extends FormRequest
             'parcelas' => $editando ? ['prohibited'] : ['nullable', 'integer', 'min:1', "max:{$maxParcelas}"],
             'data_pagamento' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
             'valor_pago' => ['nullable', 'numeric', 'decimal:0,2', 'gt:0', 'max:999999999999.99'],
-            'conta_financeira_id' => ['nullable', 'required_with:data_pagamento', 'integer', 'exists:contas_financeiras,id'],
+            'conta_financeira_id' => ['nullable', 'required_with:data_pagamento', 'integer', $this->existeNaFazenda('contas_financeiras')],
             'forma_pagamento' => ['nullable', Rule::enum(FormaPagamento::class)],
         ];
     }

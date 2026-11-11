@@ -4,11 +4,14 @@ namespace App\Http\Requests;
 
 use App\Enums\GrupoCusto;
 use App\Enums\TipoLancamento;
+use App\Http\Requests\Concerns\RegrasDaFazenda;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class SalvarCategoriaFinanceiraRequest extends FormRequest
 {
+    use RegrasDaFazenda;
+
     public function rules(): array
     {
         $categoria = $this->route('categoria');
@@ -18,7 +21,7 @@ class SalvarCategoriaFinanceiraRequest extends FormRequest
             // O tipo não muda depois de criada: lançamentos antigos dependem dele.
             'tipo' => $categoria ? ['prohibited'] : ['required', Rule::enum(TipoLancamento::class)],
             'nome' => [$categoria ? 'sometimes' : 'required', 'string', 'max:80',
-                Rule::unique('categorias_financeiras', 'nome')->where('tipo', $tipo)->ignore($categoria)],
+                $this->unicoNaFazenda('categorias_financeiras', 'nome')->where('tipo', $tipo)->ignore($categoria)],
             'grupo_custo' => $tipo === 'DESPESA'
                 ? [$categoria ? 'sometimes' : 'required', Rule::enum(GrupoCusto::class)]
                 : ['prohibited'],

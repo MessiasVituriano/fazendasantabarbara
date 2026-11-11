@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\Perfil;
 use App\Models\User;
+use App\Services\ContextoFazenda;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -45,6 +46,31 @@ class UserFactory extends Factory
     public function caseiro(): static
     {
         return $this->state(['perfil' => Perfil::CASEIRO, 'email' => null]);
+    }
+
+    /**
+     * O perfil vale por fazenda: sai dos atributos antes de gravar e vira o vínculo com a fazenda ativa
+     * (a fazenda 1 quando não há uma definida).
+     */
+    public function configure(): static
+    {
+        return $this
+            ->afterMaking(function (User $usuario) {
+                $perfil = $usuario->getAttributes()['perfil'] ?? Perfil::GESTOR;
+                $usuario->offsetUnset('perfil');
+                self::perfis()[$usuario] = $perfil instanceof Perfil ? $perfil : Perfil::from($perfil);
+            })
+            ->afterCreating(function (User $usuario) {
+                $usuario->vincular(app(ContextoFazenda::class)->id() ?? 1, self::perfis()[$usuario] ?? Perfil::GESTOR);
+            });
+    }
+
+    /** @return \WeakMap<User, Perfil> */
+    private static function perfis(): \WeakMap
+    {
+        static $perfis = new \WeakMap;
+
+        return $perfis;
     }
 
     /**

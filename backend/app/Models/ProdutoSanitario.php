@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProdutoSanitario extends Model
 {
-    use Auditavel;
+    use Auditavel, PertenceAFazenda;
 
     protected $table = 'produtos_sanitarios';
 

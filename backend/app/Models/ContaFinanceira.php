@@ -6,14 +6,14 @@ use App\Casts\Data;
 use App\Enums\SituacaoLancamento;
 use App\Enums\TipoContaFinanceira;
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\DB;
 
 class ContaFinanceira extends Model
 {
-    use Auditavel, HasFactory;
+    use Auditavel, HasFactory, PertenceAFazenda;
 
     protected $table = 'contas_financeiras';
 
@@ -49,14 +49,14 @@ class ContaFinanceira extends Model
      */
     public static function saldos(?string $ate = null): array
     {
-        $movimento = DB::table('lancamentos')
+        $movimento = Lancamento::query()
             ->where('situacao', SituacaoLancamento::PAGO->value)
             ->when($ate, fn ($q) => $q->where('data_pagamento', '<=', $ate))
             ->groupBy('conta_financeira_id')
             ->selectRaw("conta_financeira_id, SUM(CASE WHEN tipo = 'RECEITA' THEN valor_pago ELSE -valor_pago END) AS liquido")
             ->pluck('liquido', 'conta_financeira_id');
 
-        $capital = DB::table('movimentos_capital')
+        $capital = MovimentoCapital::query()
             ->whereNull('cancelado_em')
             ->when($ate, fn ($q) => $q->where('data_movimento', '<=', $ate))
             ->groupBy('conta_financeira_id')

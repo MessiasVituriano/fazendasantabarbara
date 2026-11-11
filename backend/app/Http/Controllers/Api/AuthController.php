@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\Perfil;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Concerns\RegrasDadosUsuario;
 use App\Http\Resources\UsuarioResource;
+use App\Models\FazendaUsuario;
 use App\Models\User;
+use App\Services\ContextoFazenda;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -20,6 +24,8 @@ class AuthController extends Controller
     use RegrasDadosUsuario;
 
     private const TENTATIVAS = 5;
+
+    public function __construct(private ContextoFazenda $contexto) {}
 
     public function login(Request $request): JsonResponse
     {
@@ -43,24 +49,51 @@ class AuthController extends Controller
             RateLimiter::hit($chave, 60);
             throw ValidationException::withMessages(['usuario' => 'Usuário ou senha inválidos.']);
         }
-        if (! $user->ativo) {
+        $vinculos = $user->vinculos()->acessiveis()->with('fazenda')->get();
+        if (! $user->ativo || $vinculos->isEmpty()) {
             throw ValidationException::withMessages(['usuario' => 'Este usuário está desativado. Fale com o gestor.']);
         }
 
         RateLimiter::clear($chave);
-        $token = $user->createToken($dados['dispositivo'] ?? 'web', [$user->perfil->value]);
+        // Com uma fazenda só, ela já é a ativa (perfil na resposta); com várias, o front escolhe e manda X-Fazenda.
+        if ($vinculos->count() === 1) {
+            $this->contexto->definir($vinculos->first()->fazenda, $vinculos->first());
+        }
+        $token = $user->createToken($dados['dispositivo'] ?? 'web');
 
         return response()->json([
             'data' => [
                 'token' => $token->plainTextToken,
                 'usuario' => new UsuarioResource($user),
+                'fazendas' => $this->fazendas($vinculos),
             ],
         ]);
     }
 
     public function eu(Request $request): UsuarioResource
     {
-        return new UsuarioResource($request->user());
+        $user = $request->user();
+
+        return (new UsuarioResource($user))->additional([
+            'fazenda_atual' => $this->contexto->id(),
+            'fazendas' => $this->fazendas($user->vinculos()->acessiveis()->with('fazenda')->get()),
+        ]);
+    }
+
+    /**
+     * Fazendas em que o usuário pode entrar, com o perfil em cada uma.
+     *
+     * @param  Collection<int, FazendaUsuario>  $vinculos
+     * @return list<array{id: int, nome: string, perfil: Perfil, perfil_label: string}>
+     */
+    private function fazendas(Collection $vinculos): array
+    {
+        return $vinculos->sortBy('fazenda.nome')->map(fn (FazendaUsuario $v) => [
+            'id' => $v->fazenda->id,
+            'nome' => $v->fazenda->nome,
+            'perfil' => $v->perfil,
+            'perfil_label' => $v->perfil->label(),
+        ])->values()->all();
     }
 
     /** Atualiza os próprios dados cadastrais (perfil e situação não mudam por aqui). */

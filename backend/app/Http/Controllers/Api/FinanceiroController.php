@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Concerns\RegrasDaFazenda;
 use App\Services\RelatorioFinanceiro;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,6 +13,8 @@ use Illuminate\Validation\Rule;
 /** Leituras consolidadas do financeiro: visão geral, fluxo de caixa e demonstrativo de resultado. */
 class FinanceiroController extends Controller
 {
+    use RegrasDaFazenda;
+
     public function __construct(private readonly RelatorioFinanceiro $relatorio) {}
 
     public function resumo(Request $request): JsonResponse
@@ -26,7 +29,7 @@ class FinanceiroController extends Controller
         $dados = $request->validate([
             'inicio' => ['required', 'date_format:Y-m-d'],
             'fim' => ['required', 'date_format:Y-m-d', 'after_or_equal:inicio'],
-            'conta_financeira_id' => ['nullable', 'integer', 'exists:contas_financeiras,id'],
+            'conta_financeira_id' => ['nullable', 'integer', $this->existeNaFazenda('contas_financeiras')],
             'agrupamento' => ['nullable', Rule::in(['mes', 'dia'])],
         ]);
         $inicio = Carbon::parse($dados['inicio']);
@@ -42,7 +45,7 @@ class FinanceiroController extends Controller
         $dados = $request->validate([
             'inicio' => ['required', 'date_format:Y-m-d'],
             'fim' => ['required', 'date_format:Y-m-d', 'after_or_equal:inicio'],
-            'lote_id' => ['nullable', 'integer', 'exists:lotes,id'],
+            'lote_id' => ['nullable', 'integer', $this->existeNaFazenda('lotes')],
         ]);
 
         return response()->json(['data' => $this->relatorio->demonstrativo(

@@ -4,6 +4,7 @@ import { CloudAlert, CloudCheck, CloudOff, CloudUpload, RefreshCw, Trash2 } from
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useSessao } from '@/composables/useSessao'
 import { useFilaOffline } from '@/offline/fila'
 
 /**
@@ -12,6 +13,9 @@ import { useFilaOffline } from '@/offline/fila'
  */
 const { online, itens, pendentes, comErro, sincronizando, sincronizar, descartar, tentarDeNovo } = useFilaOffline()
 const aberto = ref(false)
+// Com mais de uma fazenda, cada registro mostra para qual fazenda vai.
+const { fazendas } = useSessao()
+const variasFazendas = computed(() => fazendas.value.length > 1)
 
 const visivel = computed(() => !online.value || itens.value.length > 0)
 const estado = computed(() => {
@@ -54,7 +58,9 @@ function confirmarDescarte(item) {
                        :class="item.estado === 'erro' ? 'text-destructive' : 'text-amber-600 dark:text-amber-400'" />
             <div class="min-w-0 flex-1">
               <p class="text-sm font-medium">{{ item.descricao }}</p>
-              <p class="text-xs text-muted-foreground">Feito em {{ quando(item.criadoEm) }} · {{ item.estado === 'erro' ? 'recusado pelo servidor' : 'aguardando envio' }}</p>
+              <p class="text-xs text-muted-foreground">
+                <template v-if="variasFazendas && item.fazendaNome">{{ item.fazendaNome }} · </template>Feito em {{ quando(item.criadoEm) }} · {{ item.estado === 'erro' ? 'recusado pelo servidor' : 'aguardando envio' }}
+              </p>
               <p v-for="(m, i) in item.erros" :key="i" class="mt-1 text-xs text-destructive">{{ m }}</p>
             </div>
             <Button v-if="item.estado === 'erro'" variant="ghost" size="icon" class="size-8" aria-label="Tentar de novo" :disabled="!online || sincronizando" @click="tentarDeNovo(item.id)"><RefreshCw /></Button>

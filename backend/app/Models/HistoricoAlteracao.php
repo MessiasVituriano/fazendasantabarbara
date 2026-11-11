@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** Linha da trilha de auditoria. Somente inclusão: nunca é alterada nem excluída pela aplicação. */
 class HistoricoAlteracao extends Model
 {
+    use PertenceAFazenda;
+
     protected $table = 'historico_alteracoes';
 
     public const UPDATED_AT = null;

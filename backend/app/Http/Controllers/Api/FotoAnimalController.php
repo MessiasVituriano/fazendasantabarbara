@@ -23,7 +23,7 @@ class FotoAnimalController extends Controller
     /** Upload multipart (campo `foto`). A primeira foto do animal vira a principal. */
     public function store(EnviarFotoRequest $request, Animal $animal, ProcessadorFoto $processador): JsonResource
     {
-        $arquivos = $processador->salvar($request->file('foto'), "animais/{$animal->id}");
+        $arquivos = $processador->salvar($request->file('foto'), "fazendas/{$animal->fazenda_id}/animais/{$animal->id}");
 
         try {
             $foto = DB::transaction(function () use ($request, $animal, $arquivos) {

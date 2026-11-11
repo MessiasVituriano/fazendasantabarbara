@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\Data;
 use App\Enums\TipoMovimentoEstoque;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /** Entrada, saída ou ajuste de um item. Não é excluído: cancelar desfaz o efeito no saldo. */
 class MovimentoEstoque extends Model
 {
+    use PertenceAFazenda;
+
     protected $table = 'movimentos_estoque';
 
     protected $fillable = ['uuid', 'item_estoque_id', 'lote_id', 'tipo', 'data_movimento', 'quantidade', 'valor_unitario', 'custo_unitario', 'observacao', 'user_id'];

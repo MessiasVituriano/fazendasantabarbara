@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\Data;
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class MetaEngorda extends Model
 {
-    use Auditavel;
+    use Auditavel, PertenceAFazenda;
 
     protected $table = 'metas_engorda';
 

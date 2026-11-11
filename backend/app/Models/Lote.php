@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\Data;
 use App\Models\Concerns\Auditavel;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Lote extends Model
 {
-    use Auditavel, HasFactory;
+    use Auditavel, HasFactory, PertenceAFazenda;
 
     protected $table = 'lotes';
 

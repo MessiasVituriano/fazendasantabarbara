@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Casts\Data;
 use App\Enums\TipoItemEstoque;
 use App\Enums\UnidadeEstoque;
+use App\Models\Concerns\PertenceAFazenda;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,7 +14,7 @@ use Illuminate\Support\Carbon;
 /** Material guardado na fazenda (medicamento, vacina, ração...). O saldo só muda por movimentos. */
 class ItemEstoque extends Model
 {
-    use HasFactory;
+    use HasFactory, PertenceAFazenda;
 
     protected $table = 'itens_estoque';
 

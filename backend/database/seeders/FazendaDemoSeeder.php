@@ -8,10 +8,10 @@ use App\Enums\Sexo;
 use App\Enums\StatusPiquete;
 use App\Enums\StatusReprodutivo;
 use App\Models\Animal;
+use App\Models\CategoriaSanitaria;
 use App\Models\Pesagem;
 use App\Models\Piquete;
 use App\Models\ProducaoLeite;
-use App\Models\CategoriaSanitaria;
 use App\Models\ProdutoSanitario;
 use App\Models\VacinaSanidade;
 use App\Services\ServicoReprodutivo;
@@ -40,7 +40,7 @@ class FazendaDemoSeeder extends Seeder
                 $dia = $base * $curva * $fator;
                 foreach (['MANHA' => 0.56, 'TARDE' => 0.44] as $periodo => $parte) {
                     $linhas[] = [
-                        'animal_id' => $vaca->id, 'data_pesagem' => $hoje->copy()->subDays($d)->toDateString(),
+                        'fazenda_id' => $vaca->fazenda_id, 'animal_id' => $vaca->id, 'data_pesagem' => $hoje->copy()->subDays($d)->toDateString(),
                         'periodo' => $periodo, 'quantidade_litros' => round($dia * $parte * fake()->randomFloat(3, 0.92, 1.08), 2),
                         'created_at' => now(), 'updated_at' => now(),
                     ];

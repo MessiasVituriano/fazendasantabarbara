@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\Perfil;
 use App\Enums\TipoMovimentoEstoque;
 use App\Http\Requests\Concerns\LimitaDataDoCaseiro;
+use App\Http\Requests\Concerns\RegrasDaFazenda;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -14,7 +15,7 @@ use Illuminate\Validation\Rule;
  */
 class RegistrarMovimentoEstoqueRequest extends FormRequest
 {
-    use LimitaDataDoCaseiro;
+    use LimitaDataDoCaseiro, RegrasDaFazenda;
 
     protected function prepareForValidation(): void
     {
@@ -34,7 +35,7 @@ class RegistrarMovimentoEstoqueRequest extends FormRequest
 
         return [
             'uuid' => ['nullable', 'uuid'],
-            'item_estoque_id' => ['required', 'integer', 'exists:itens_estoque,id'],
+            'item_estoque_id' => ['required', 'integer', $this->existeNaFazenda('itens_estoque')],
             'tipo' => ['required', Rule::in(array_column($tipos, 'value'))],
             'data_movimento' => ['required', 'date_format:Y-m-d', 'before_or_equal:today', ...$this->limiteDoCaseiro()],
             'quantidade' => $ajuste ? ['prohibited'] : ['required', 'numeric', 'decimal:0,3', 'gt:0', 'max:99999999999'],
@@ -44,7 +45,7 @@ class RegistrarMovimentoEstoqueRequest extends FormRequest
                 : ['prohibited'],
             // Destino da saída (ração do lote, por exemplo). Entradas e ajustes não têm lote.
             'lote_id' => $this->input('tipo') === TipoMovimentoEstoque::SAIDA->value
-                ? ['nullable', 'integer', 'exists:lotes,id']
+                ? ['nullable', 'integer', $this->existeNaFazenda('lotes')]
                 : ['prohibited'],
             'observacao' => ['nullable', 'string', 'max:255'],
         ];

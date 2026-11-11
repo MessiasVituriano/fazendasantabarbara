@@ -5,19 +5,20 @@ namespace App\Http\Requests;
 use App\Enums\Periodo;
 use App\Enums\Sexo;
 use App\Http\Requests\Concerns\LimitaDataDoCaseiro;
+use App\Http\Requests\Concerns\RegrasDaFazenda;
 use App\Models\Animal;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class RegistrarProducaoLeiteRequest extends RequisicaoEmLote
 {
-    use LimitaDataDoCaseiro;
+    use LimitaDataDoCaseiro, RegrasDaFazenda;
 
     protected function regrasDoRegistro(): array
     {
         return [
             'uuid' => ['nullable', 'uuid', 'distinct'],
-            'animal_id' => ['required', 'integer', 'exists:animais,id'],
+            'animal_id' => ['required', 'integer', $this->existeNaFazenda('animais')],
             'data_pesagem' => ['required', 'date', 'before_or_equal:today', ...$this->limiteDoCaseiro()],
             'periodo' => ['required', Rule::enum(Periodo::class)],
             'quantidade_litros' => ['required', 'numeric', 'min:0', 'max:999.99'],

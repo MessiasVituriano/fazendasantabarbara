@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\RegraNegocioException;
+use App\Http\Middleware\DefineFazendaAtiva;
 use App\Http\Middleware\ExigePerfil;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -11,6 +12,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -34,7 +36,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias(['perfil' => ExigePerfil::class]);
+        $middleware->alias(['perfil' => ExigePerfil::class, 'fazenda' => DefineFazendaAtiva::class]);
+        // A fazenda precisa estar definida antes de resolver os models da rota (o filtro por fazenda depende dela).
+        $middleware->prependToPriorityList(SubstituteBindings::class, DefineFazendaAtiva::class);
     })
     ->withExceptions(function (Exceptions $exceptions) use ($erroJsonApi): void {
         $exceptions->shouldRenderJsonWhen(

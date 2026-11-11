@@ -12,6 +12,9 @@
 */
 
 return [
+    // Nome do produto (tela de login, título da aba e menu). O nome da fazenda vem do cadastro dela.
+    'produto' => env('PECUARIA_PRODUTO', 'Gestão Agropecuária'),
+
     'dias_gestacao' => (int) env('PECUARIA_DIAS_GESTACAO', 283),
     'dias_para_toque' => (int) env('PECUARIA_DIAS_PARA_TOQUE', 35),
     'dias_ante_parto_secagem' => (int) env('PECUARIA_DIAS_ANTE_PARTO_SECAGEM', 60),
