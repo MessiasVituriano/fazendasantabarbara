@@ -55,6 +55,52 @@ git pull
 
 O script para com erro se a aplicação não subir.
 
+## Clientes, convites e suporte
+
+- **Administrador da plataforma** (nossa equipe): `php artisan pecuaria:criar-admin suporte --nome="Equipe"`. Ele entra sem
+  fazenda própria e abre **Administração** (`/admin`): cadastra o cliente com a primeira fazenda e gera o convite do
+  responsável, suspende/reativa, exporta os dados e **entra como suporte** numa fazenda (motivo obrigatório, vale 2 horas,
+  fica registrado em `acessos_suporte`; o que for alterado entra no histórico com o usuário do suporte).
+- **Responsável pelo cliente** (dono): em **Conta do produtor** (`/conta`) cadastra outras fazendas (já com o catálogo
+  padrão) e baixa a exportação completa dos dados.
+- **Convites por link**: o gestor convida em Usuários; a pessoa abre o link, cria o próprio usuário e senha (ou usa o acesso
+  que já tem em outra fazenda) e já entra. O link vale 7 dias, uma vez, e sai pronto para o WhatsApp.
+- **Esqueci a senha**: na tela de login, quem tem e-mail recebe o link por e-mail; sem e-mail, o gestor gera o link em
+  Usuários (editar → "Gerar link") e manda pelo WhatsApp. Vale 24 horas, uma vez, e encerra as sessões abertas.
+- **E-mail**: com `MAIL_MAILER=log` nada é enviado de verdade (o link continua disponível para o WhatsApp). Para enviar,
+  configure um SMTP (`MAIL_MAILER=smtp`, `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`).
+  Os links usam `PECUARIA_URL_PAINEL` (padrão: `APP_URL`).
+- **Limites**: login 30 tentativas/min por IP (e 5 por usuário); convites e nova senha 10/min por IP.
+
+## LGPD
+
+- **Exportação**: Administração → "Exportar dados" ou Conta do produtor → "Exportar dados": ZIP com um JSON por tabela de
+  cada fazenda, os usuários com acesso (sem senhas), fotos e anexos.
+- **Exclusão definitiva** de um cliente que cancelou: suspenda o cliente e rode
+  `php artisan pecuaria:excluir-cliente <id>` (pede o nome do cliente para confirmar). Apaga registros, arquivos, fazendas e
+  os usuários que só tinham acesso a ele. Não tem volta: exporte antes, se o cliente pediu.
+- Termos de uso e política de privacidade ainda precisam ser escritos (texto jurídico).
+
+## Backups
+
+O container `backup` (subido pelo `deploy.sh`) faz, todo dia às 3h, o dump do banco e um `.tar.gz` das fotos e anexos no
+volume `backups`, guardando 14 dias (`BACKUP_DIAS`, `BACKUP_HORA` no `.env`).
+
+```bash
+C="docker compose -f docker-compose.prod.yml"
+$C exec backup sh /backup.sh agora          # backup na hora
+$C exec backup ls -lh /backups              # listar
+
+# Restaurar o banco (pare o app antes: $C stop app)
+$C exec backup sh -c 'PGPASSWORD=$DB_PASSWORD pg_restore -h db -U $DB_USERNAME -d $DB_DATABASE --clean --if-exists --no-owner /backups/banco-AAAAMMDD-HHMM.dump'
+# Restaurar os arquivos
+docker run --rm -v fazenda_backups:/backups -v fazenda_storage-data:/storage alpine tar -xzf /backups/arquivos-AAAAMMDD-HHMM.tar.gz -C /storage
+$C start app
+```
+
+O volume fica no mesmo servidor: para resistir à perda do droplet, ative os backups da Digital Ocean ou copie `/backups`
+para fora (Spaces/S3).
+
 ## Usuários e perfis
 
 | Perfil | Acesso |

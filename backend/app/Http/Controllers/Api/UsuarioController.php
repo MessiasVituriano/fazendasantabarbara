@@ -77,7 +77,7 @@ class UsuarioController extends Controller
         $dados = $request->validate($this->regras($usuario), $this->mensagens());
 
         $mudaDadosDaPessoa = array_intersect_key($dados, array_flip(['nome', 'usuario', 'email', 'telefone', 'senha'])) !== [];
-        if ($mudaDadosDaPessoa && $this->acessaOutroCliente($usuario)) {
+        if ($mudaDadosDaPessoa && $usuario->acessaOutroCliente($this->contexto->fazenda()->cliente_id)) {
             throw new RegraNegocioException(
                 'Este usuário também acessa fazendas de outro produtor: só ele pode alterar os próprios dados e a senha.',
                 'USUARIO_DE_OUTRO_CLIENTE', 403,
@@ -127,14 +127,6 @@ class UsuarioController extends Controller
             ->where('perfil', Perfil::GESTOR)->where('ativo', true)
             ->whereHas('usuario', fn (Builder $q) => $q->where('ativo', true))
             ->count();
-    }
-
-    /** O usuário tem acesso a fazenda de outro cliente (ex.: veterinário que atende vários produtores)? */
-    private function acessaOutroCliente(User $usuario): bool
-    {
-        $clienteId = $this->contexto->fazenda()->cliente_id;
-
-        return $usuario->vinculos()->whereHas('fazenda', fn (Builder $q) => $q->where('cliente_id', '!=', $clienteId))->exists();
     }
 
     private function regras(?User $usuario = null): array

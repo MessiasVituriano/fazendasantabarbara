@@ -87,15 +87,21 @@ até a marca ser definida; os arquivos antigos são movidos por `pecuaria:organi
 
 ## Fase 3 — produto vendável
 
-- [ ] **Painel do administrador da plataforma:** criar cliente e primeira fazenda, convidar o dono, suspender e reativar,
+Implementada na branch `multipropriedade/fase-3`, menos os itens que dependem de decisão ou de serviço externo.
+
+- [x] **Painel do administrador da plataforma:** criar cliente e primeira fazenda, convidar o dono, suspender e reativar,
   entrar como suporte (com registro no histórico).
-- [ ] **Área do dono:** cadastrar fazendas, convidar usuários por e-mail ou WhatsApp, definir o perfil em cada fazenda.
-- [ ] **Recuperação de senha:** hoje não existe e o e-mail é opcional. Com clientes externos passa a ser obrigatório
-  (por e-mail ou WhatsApp).
-- [ ] **Nome e marca do produto:** hoje o sistema se chama "Fazenda Santa Bárbara"; o produto vendido precisa de outro nome,
-  domínio e tela de login próprios.
-- [ ] **LGPD:** termos de uso e política de privacidade, exportação completa dos dados de um cliente e exclusão ao cancelar.
-- [ ] **Operação:** backups diários com restauração testada, monitoramento de erros, limite de requisições no login.
+- [x] **Área do dono:** cadastrar fazendas, convidar usuários por e-mail ou WhatsApp, definir o perfil em cada fazenda.
+- [x] **Recuperação de senha:** link de uso único, por e-mail (pedido no login) ou gerado pelo gestor para o WhatsApp.
+- [x] Convites por link (WhatsApp; e-mail quando houver), aceitos criando o acesso ou com um acesso que a pessoa já tem.
+- [ ] **Nome e marca do produto:** ainda não definidos; o nome já vem de `PECUARIA_PRODUTO`, sem mudança de código.
+- [x] **LGPD — exportação** completa dos dados de um cliente (ZIP) e **exclusão** ao cancelar (`pecuaria:excluir-cliente`).
+- [ ] **LGPD — termos de uso e política de privacidade:** texto jurídico a escrever; depois, registrar o aceite no primeiro acesso.
+- [x] **Operação — backups diários** do banco e dos arquivos, com restauração testada (container `backup`).
+- [ ] **Operação — cópia dos backups fora do servidor** (Spaces/S3 ou backups do droplet): falta escolher.
+- [ ] **Operação — monitoramento de erros:** falta escolher o serviço (ex.: Sentry, Flare).
+- [x] **Operação — limite de requisições** no login, nos convites e na nova senha.
+- [ ] **E-mail de verdade:** configurar um SMTP; até lá os links seguem pelo WhatsApp.
 - [ ] **Ambiente de demonstração:** instância separada com os seeders, recriada periodicamente, para apresentar a clientes.
 
 ## Fase 4 — assinatura e cobrança

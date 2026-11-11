@@ -60,7 +60,8 @@ http.interceptors.response.use(
     const codigo = erros?.[0]?.code
     if ((codigo === 'SEM_ACESSO_FAZENDA' || codigo === 'FAZENDA_NAO_INFORMADA') && !erro.config?.fila) {
       sessao.esquecerFazenda()
-      if (!location.pathname.startsWith('/fazendas')) location.assign('/fazendas')
+      const destino = sessao.admin.value && !sessao.fazendas.value.length ? '/admin' : '/fazendas'
+      if (!location.pathname.startsWith(destino)) location.assign(destino)
     }
     if (erro.response?.status === 401 && !erro.config?.url?.endsWith('/login')) {
       sessao.encerrar()

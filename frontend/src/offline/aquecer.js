@@ -14,9 +14,9 @@ let ultimo = 0
 const diaAnterior = (d) => { const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() - 1); return x.toISOString().slice(0, 10) }
 
 export async function aquecerCache({ forcar = false } = {}) {
-  const { autenticado, fazendaId, fazendas } = useSessao()
-  // Quem tem várias fazendas só pré-carrega depois de escolher uma (o cache é por fazenda).
-  if (!online.value || !autenticado.value || (!fazendaId.value && fazendas.value.length > 1)) return
+  const { autenticado, fazendaId, fazendas, admin } = useSessao()
+  // Quem tem várias fazendas (ou é da administração) só pré-carrega depois de escolher uma (o cache é por fazenda).
+  if (!online.value || !autenticado.value || (!fazendaId.value && (fazendas.value.length > 1 || admin.value))) return
   if (!forcar && Date.now() - ultimo < INTERVALO_MS) return
   ultimo = Date.now()
 

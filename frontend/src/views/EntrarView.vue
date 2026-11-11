@@ -13,7 +13,7 @@ import { useSistema } from '../composables/useSistema'
 
 const router = useRouter()
 const route = useRoute()
-const { iniciar, fazendaId, usuario: logado } = useSessao()
+const { iniciar, fazendaId, usuario: logado, fazendas } = useSessao()
 const { produto } = useSistema()
 
 const usuario = ref('')
@@ -26,10 +26,11 @@ async function entrar() {
   erros.value = []
   try {
     const { data } = await http.post('/login', { usuario: usuario.value, senha: senha.value, dispositivo: 'web' })
-    iniciar(data.data.token, data.data.usuario, data.data.fazendas)
+    iniciar(data.data.token, data.data.usuario, data.data.fazendas, { admin: data.data.admin, fazendaId: data.data.fazenda_id })
     const volta = typeof route.query.volta === 'string' && route.query.volta.startsWith('/') ? route.query.volta : null
-    // Com mais de uma fazenda, primeiro escolhe em qual vai trabalhar.
-    if (!fazendaId.value) await router.replace({ name: 'fazendas', query: volta ? { volta } : {} })
+    // Administrador sem fazenda vai para a administração; com mais de uma fazenda, primeiro escolhe em qual vai trabalhar.
+    if (data.data.admin && !fazendas.value.length) await router.replace({ name: 'admin' })
+    else if (!fazendaId.value) await router.replace({ name: 'fazendas', query: volta ? { volta } : {} })
     else await router.replace(volta ?? inicioDoPerfil(logado.value.perfil))
   } catch (e) {
     erros.value = e.mensagens
@@ -67,6 +68,7 @@ async function entrar() {
               <Input id="senha" v-model="senha" type="password" autocomplete="current-password" required />
             </div>
             <Button type="submit" class="w-full" :disabled="entrando"><LogIn /> {{ entrando ? 'Entrando…' : 'Entrar' }}</Button>
+            <RouterLink to="/esqueci-senha" class="text-center text-sm text-muted-foreground underline-offset-4 hover:underline">Esqueci minha senha</RouterLink>
           </form>
         </CardContent>
       </Card>

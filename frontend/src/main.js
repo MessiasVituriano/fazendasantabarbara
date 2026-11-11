@@ -22,7 +22,12 @@ watch(() => [sessao.autenticado.value, online.value], ([autenticado, conectado])
   if (!autenticado || !conectado) return
   http.get('/eu').then(({ data }) => {
     sessao.atualizarFazendas(data.fazendas ?? [])
-    if (sessao.fazendaId.value === data.fazenda_atual) sessao.atualizarUsuario(data.data)
+    if (sessao.fazendaId.value === data.fazenda_atual) {
+      sessao.atualizarUsuario(data.data)
+      sessao.atualizarPapeis({ admin: data.admin, dono: data.dono })
+    } else {
+      sessao.atualizarPapeis({ admin: data.admin, dono: false })
+    }
   }).catch(() => { /* segue com a sessão guardada */ })
 }, { immediate: true })
 
