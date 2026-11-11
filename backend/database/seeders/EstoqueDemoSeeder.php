@@ -11,11 +11,16 @@ use Illuminate\Support\Carbon;
 /** Estoque de demonstração (somente desenvolvimento): itens com entradas, usos e alertas. */
 class EstoqueDemoSeeder extends Seeder
 {
+    /** Quem aparece como autor dos registros; sem isso, os usuários gestor e caseiro do seed. */
+    public ?User $gestor = null;
+
+    public ?User $caseiro = null;
+
     public function run(ServicoEstoque $estoque): void
     {
         $hoje = Carbon::today();
-        $gestor = User::firstWhere('usuario', 'gestor');
-        $caseiro = User::firstWhere('usuario', 'caseiro');
+        $gestor = $this->gestor ?? User::firstWhere('usuario', 'gestor');
+        $caseiro = $this->caseiro ?? User::firstWhere('usuario', 'caseiro');
 
         $itens = [
             // nome, tipo, unidade, mínimo, validade, local, entrada, preço, saídas

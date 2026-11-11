@@ -43,7 +43,7 @@ class AdminController extends Controller
             ->get()->groupBy(fn (Convite $c) => $clienteDaFazenda[$c->fazenda_id]);
 
         return response()->json(['data' => $clientes->map(fn (Cliente $c) => [
-            'id' => $c->id, 'nome' => $c->nome, 'documento' => $c->documento, 'ativo' => $c->ativo,
+            'id' => $c->id, 'nome' => $c->nome, 'documento' => $c->documento, 'ativo' => $c->ativo, 'demonstracao' => $c->demonstracao,
             'created_at' => $c->created_at?->toIso8601String(),
             'fazendas' => $c->fazendas->map(fn (Fazenda $f) => [
                 'id' => $f->id, 'nome' => $f->nome, 'municipio' => $f->municipio, 'uf' => $f->uf, 'ativa' => $f->ativa, 'usuarios' => $f->usuarios,

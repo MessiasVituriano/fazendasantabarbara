@@ -20,11 +20,16 @@ use Illuminate\Support\Carbon;
  */
 class EngordaDemoSeeder extends Seeder
 {
+    /** Quem aparece como autor dos registros; sem isso, os usuários gestor e caseiro do seed. */
+    public ?User $gestor = null;
+
+    public ?User $caseiro = null;
+
     public function run(PainelEngorda $painel, ServicoEstoque $estoque): void
     {
         $hoje = Carbon::today();
-        $caseiro = User::firstWhere('usuario', 'caseiro');
-        $gestor = User::firstWhere('usuario', 'gestor');
+        $caseiro = $this->caseiro ?? User::firstWhere('usuario', 'caseiro');
+        $gestor = $this->gestor ?? User::firstWhere('usuario', 'gestor');
 
         $garrotes = Lote::where('nome', 'like', 'Lote 01%')->firstOrFail();
         $terminacao = Lote::create([

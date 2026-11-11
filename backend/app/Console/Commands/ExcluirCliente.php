@@ -2,17 +2,11 @@
 
 namespace App\Console\Commands;
 
-use App\Models\AnexoLancamento;
 use App\Models\Cliente;
-use App\Models\FazendaUsuario;
-use App\Models\FotoAnimal;
-use App\Models\User;
-use App\Services\ServicoExportacao;
+use App\Services\ServicoExclusaoCliente;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Exclusão definitiva de um cliente que cancelou (LGPD): todos os registros e arquivos das fazendas dele, as fazendas,
@@ -23,7 +17,7 @@ use Illuminate\Support\Facades\Storage;
 #[Description('Apaga definitivamente um cliente suspenso, com todas as fazendas, registros e arquivos')]
 class ExcluirCliente extends Command
 {
-    public function handle(): int
+    public function handle(ServicoExclusaoCliente $exclusao): int
     {
         $cliente = Cliente::with('fazendas')->find($this->argument('cliente'));
         if ($cliente === null) {
@@ -44,32 +38,9 @@ class ExcluirCliente extends Command
             return self::FAILURE;
         }
 
-        $fazendaIds = $cliente->fazendas->modelKeys();
-        // Usuários que ficam sem nenhuma fazenda (e não são da plataforma) também saem.
-        $usuariosSoDoCliente = User::where('admin_plataforma', false)
-            ->whereHas('vinculos', fn ($q) => $q->whereIn('fazenda_id', $fazendaIds))
-            ->whereDoesntHave('vinculos', fn ($q) => $q->whereNotIn('fazenda_id', $fazendaIds))
-            ->pluck('id');
+        $excluido = $exclusao->excluir($cliente);
 
-        DB::transaction(function () use ($cliente, $fazendaIds, $usuariosSoDoCliente) {
-            DB::table('animais')->whereIn('fazenda_id', $fazendaIds)->update(['mae_id' => null]);
-            foreach (ServicoExportacao::MODELOS as $modelo) {
-                DB::table((new $modelo)->getTable())->whereIn('fazenda_id', $fazendaIds)->delete();
-            }
-            FazendaUsuario::whereIn('fazenda_id', $fazendaIds)->delete();
-            $cliente->fazendas()->delete(); // convites e acessos de suporte saem junto (cascade)
-            $cliente->delete();
-
-            DB::table('personal_access_tokens')->where('tokenable_type', User::class)->whereIn('tokenable_id', $usuariosSoDoCliente)->delete();
-            User::whereKey($usuariosSoDoCliente)->delete();
-        });
-
-        foreach ($fazendaIds as $id) {
-            FotoAnimal::disco()->deleteDirectory("fazendas/{$id}");
-            Storage::disk(AnexoLancamento::disco())->deleteDirectory("fazendas/{$id}");
-        }
-
-        $this->info("Cliente excluído: {$cliente->nome}, ".count($fazendaIds).' fazenda(s), '.count($usuariosSoDoCliente).' usuário(s).');
+        $this->info("Cliente excluído: {$cliente->nome}, {$excluido['fazendas']} fazenda(s), {$excluido['usuarios']} usuário(s).");
 
         return self::SUCCESS;
     }
