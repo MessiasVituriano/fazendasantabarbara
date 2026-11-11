@@ -58,7 +58,7 @@ watch(periodoComparativo, carregarComparativo, { immediate: true, deep: true })
 // Avisos da engorda (metas, lotes sem pesagem, animais perdendo peso).
 const avisosEngorda = ref([])
 http.get('/painel/engorda').then((resp) => (avisosEngorda.value = resp.data.data)).catch(() => { /* o painel de leite segue */ })
-const destinoAviso = (a) => (a.animal_id ? `/animais/${a.animal_id}` : `/lotes?lote=${a.lote_id}`)
+const destinoAviso = (a) => (a.animal_id ? `/animais/${a.animal_id}` : `/lotes/${a.lote_id}`)
 
 const r = computed(() => dados.value?.resumo)
 const deltaUltimo = computed(() => {

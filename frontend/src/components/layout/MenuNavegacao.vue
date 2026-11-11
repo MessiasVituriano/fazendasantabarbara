@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { ArrowLeftRight, Beef, Boxes, CalendarClock, Fence, HandCoins, LayoutDashboard, Milk, Scale, Settings2, Syringe, Tags, UserCog, Wallet, Warehouse, Waves } from '@lucide/vue'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useRoute } from 'vue-router'
 import { useSessao } from '@/composables/useSessao'
 
 defineProps({ recolhido: { type: Boolean, default: false } })
@@ -27,6 +28,9 @@ const TODOS = [
   { secao: 'Administração', rotulo: 'Usuários', icone: UserCog, para: '/usuarios', gestor: true },
 ]
 const { ehGestor } = useSessao()
+const route = useRoute()
+/** Também marca o item nas subpáginas (ex.: /lotes/12 acende Lotes). */
+const ativo = (item, isActive, isExactActive) => (item.exato ? isExactActive : isActive || route.path.startsWith(`${item.para}/`))
 const itens = computed(() => TODOS.filter((i) => !i.gestor || ehGestor.value))
 </script>
 
@@ -41,7 +45,7 @@ const itens = computed(() => TODOS.filter((i) => !i.gestor || ehGestor.value))
           <a
             :href="href"
             class="flex h-9 items-center gap-3 pointer-coarse:h-11 rounded-md px-2.5 text-sm font-medium transition-colors hover:bg-sidebar-accent/60"
-            :class="[(item.exato ? isExactActive : isActive) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/80',
+            :class="[ativo(item, isActive, isExactActive) ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/80',
                      recolhido ? 'justify-center' : '']"
             @click="(e) => { navigate(e); emit('navegou') }"
           >

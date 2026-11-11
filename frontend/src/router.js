@@ -34,6 +34,7 @@ const router = createRouter({
     { path: '/financeiro/aportes-e-retiradas', name: 'aportes-retiradas', component: () => import('./views/financeiro/AportesRetiradasView.vue'), meta: SO_GESTOR },
     { path: '/financeiro/cadastros', name: 'cadastros-financeiros', component: () => import('./views/financeiro/CadastrosView.vue'), meta: SO_GESTOR },
     { path: '/lotes', name: 'lotes', component: () => import('./views/LotesView.vue'), meta: SO_GESTOR },
+    { path: '/lotes/:id', name: 'lote', component: () => import('./views/LoteView.vue'), props: true, meta: SO_GESTOR },
     { path: '/usuarios', name: 'usuarios', component: () => import('./views/UsuariosView.vue'), meta: SO_GESTOR },
     // endereços antigos
     { path: '/manejo', redirect: '/ordenha' },
