@@ -1,6 +1,6 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { ArrowLeft, Boxes, CalendarClock, HeartPulse, Mars, Milk, Scale, Syringe, Target, TrendingDown, TrendingUp, TriangleAlert, Venus } from '@lucide/vue'
+import { ArrowLeft, Boxes, CalendarClock, HeartPulse, Mars, Milk, Nfc, Scale, Syringe, Target, TrendingDown, TrendingUp, TriangleAlert, Venus, Zap } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -16,6 +16,7 @@ import AvatarAnimal from '../components/AvatarAnimal.vue'
 import FormAplicacaoSanitaria from '../components/FormAplicacaoSanitaria.vue'
 import FormEventoReprodutivo from '../components/FormEventoReprodutivo.vue'
 import GaleriaFotos from '../components/GaleriaFotos.vue'
+import GravarTagNfc from '../components/GravarTagNfc.vue'
 import GraficoPeso from '../components/GraficoPeso.vue'
 import LinhaDoTempo from '../components/LinhaDoTempo.vue'
 import CabecalhoPagina from '../components/layout/CabecalhoPagina.vue'
@@ -86,6 +87,7 @@ const TOM_TENDENCIA = { CONFIAVEL: 'text-emerald-700 dark:text-emerald-400', INS
 
 // Lançamentos rápidos
 const modal = ref(null)
+const tagAberta = ref(false)
 const TITULOS = { evento: 'Novo evento reprodutivo', pesagem: 'Nova pesagem', producao: 'Produção de leite', vacina: 'Vacina ou medicamento' }
 const rapido = reactive({ data: hoje(), peso_kg: '', periodo: turnoAtual(), quantidade_litros: '' })
 const { enviando, mensagens, campos, enviar } = useEnvio()
@@ -140,6 +142,8 @@ function aplicacaoSalva(aplicacao) {
       <Button variant="outline" @click="abrir('pesagem')"><Scale /> Pesagem</Button>
       <Button v-if="femea" variant="outline" @click="abrir('producao')"><Milk /> Produção</Button>
       <Button variant="outline" @click="abrir('vacina')"><Syringe /> Vacina/medicamento</Button>
+      <Button as-child variant="outline"><RouterLink :to="`/registro-rapido/${animal.id}`"><Zap /> Registro rápido</RouterLink></Button>
+      <Button variant="outline" @click="tagAberta = true"><Nfc /> Tag NFC</Button>
     </template>
   </CabecalhoPagina>
 
@@ -259,6 +263,8 @@ function aplicacaoSalva(aplicacao) {
       </div>
     </template>
   </main>
+
+  <GravarTagNfc v-if="animal" v-model:open="tagAberta" :animal="animal" />
 
   <Dialog :open="!!modal" @update:open="(v) => !v && (modal = null)">
     <DialogContent class="sm:max-w-lg">
