@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { inicioDoPerfil, useSessao } from './composables/useSessao'
+import { entrarNaFazenda } from './composables/useTrocaFazenda'
 
 const SO_GESTOR = { perfis: ['GESTOR'] }
 
@@ -21,6 +22,8 @@ const router = createRouter({
     { path: '/animais/:id', name: 'animal', component: () => import('./views/AnimalView.vue'), props: true },
     { path: '/ordenha', name: 'ordenha', component: () => import('./views/OrdenhaView.vue') },
     { path: '/pesagens', name: 'pesagens', component: () => import('./views/PesagensView.vue') },
+    // Tela cheia do curral; /registro-rapido/:id?fazenda=N é o link gravado na tag NFC do animal.
+    { path: '/registro-rapido/:id?', name: 'registro-rapido', component: () => import('./views/RegistroRapidoView.vue'), props: true, meta: { telaCheia: true } },
     { path: '/sanidade', name: 'sanidade', component: () => import('./views/SanidadeView.vue') },
     { path: '/abate', name: 'abate', component: () => import('./views/AbateView.vue'), meta: SO_GESTOR },
     { path: '/estoque', name: 'estoque', component: () => import('./views/EstoqueView.vue') },
@@ -56,6 +59,12 @@ router.beforeEach((to) => {
   if (!autenticado.value) return { name: 'entrar', query: { volta: to.fullPath } }
   if (to.meta.admin && !admin.value) return inicioDoPerfil(usuario.value.perfil)
   if (to.meta.semFazenda) return true
+  // Link com ?fazenda= (tag NFC do animal): entra nessa fazenda, se o usuário tiver acesso, e abre o link.
+  const fazendaDoLink = Number(to.query.fazenda)
+  if (fazendaDoLink && fazendaDoLink !== fazendaId.value && fazendas.value.some((f) => f.id === fazendaDoLink)) {
+    entrarNaFazenda(fazendaDoLink, to.fullPath)
+    return false
+  }
   if (adminSemFazenda) return { name: 'admin' }
   if (precisaEscolher) return { name: 'fazendas', query: { volta: to.fullPath } }
   if (to.meta.dono && !dono.value) return inicioDoPerfil(usuario.value.perfil)

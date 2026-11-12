@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { ArrowLeftRight, Beef, Boxes, CalendarClock, Fence, HandCoins, LayoutDashboard, Milk, Scale, Settings2, Syringe, Tags, UserCog, Wallet, Warehouse, Waves } from '@lucide/vue'
+import { ArrowLeftRight, Beef, Boxes, CalendarClock, Fence, HandCoins, LayoutDashboard, Milk, Scale, Settings2, Syringe, Tags, UserCog, Wallet, Warehouse, Waves, Zap } from '@lucide/vue'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRoute } from 'vue-router'
 import { useSessao } from '@/composables/useSessao'
@@ -20,6 +20,7 @@ const TODOS = [
   { rotulo: 'Painel de leite', icone: LayoutDashboard, para: '/painel', gestor: true },
   { rotulo: 'Ordenha', icone: Milk, para: '/ordenha' },
   { rotulo: 'Pesagens', icone: Scale, para: '/pesagens' },
+  { rotulo: 'Registro rápido', icone: Zap, para: '/registro-rapido' },
   { rotulo: 'Sanidade', icone: Syringe, para: '/sanidade' },
   { rotulo: 'Estoque', icone: Warehouse, para: '/estoque' },
   { rotulo: 'Rebanho', icone: Tags, para: '/animais' },

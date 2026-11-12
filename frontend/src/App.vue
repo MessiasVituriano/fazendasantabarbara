@@ -14,7 +14,7 @@ useColorMode() // aplica o tema salvo (ou o do sistema) em todas as telas, inclu
 <template>
   <TooltipProvider :delay-duration="0">
     <div class="flex min-h-screen bg-background">
-      <BarraLateral v-if="!route.meta.publica && !route.meta.semFazenda" />
+      <BarraLateral v-if="!route.meta.publica && !route.meta.semFazenda && !route.meta.telaCheia" />
       <div class="min-w-0 flex-1">
         <AvisoSuporte v-if="!route.meta.publica && !route.meta.semFazenda" />
         <RouterView />
