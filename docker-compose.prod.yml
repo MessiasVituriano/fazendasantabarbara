@@ -10,8 +10,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    # Só para testes no próprio droplet (curl http://127.0.0.1:8080/up). O acesso público passa pelo Caddy.
     ports:
-      - "${APP_PORT:-80}:80"
+      - "127.0.0.1:${APP_PORT:-8080}:80"
     volumes:
       - ./.env:/var/www/.env:ro
       # Fotos, comprovantes e logs: precisam sobreviver a cada deploy.
@@ -33,6 +34,30 @@ services:
       resources:
         limits:
           memory: 512M
+
+  # HTTPS na frente do app (docker/caddy/Caddyfile). Os certificados ficam no volume caddy-data.
+  caddy:
+    image: caddy:2
+    container_name: fazenda-caddy-prod
+    restart: unless-stopped
+    environment:
+      APP_URL: ${APP_URL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+    networks:
+      - fazenda-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
 
   db:
     image: postgres:16-alpine
@@ -90,4 +115,8 @@ volumes:
   storage-data:
     driver: local
   backups:
+    driver: local
+  caddy-data:
+    driver: local
+  caddy-config:
     driver: local
