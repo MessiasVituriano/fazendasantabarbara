@@ -22,7 +22,7 @@ if [ ! -f .env ]; then
 fi
 
 if grep -q "SEU_IP_AQUI" .env; then
-    echo "ERRO: ajuste APP_URL no .env com o IP ou dominio do servidor." >&2
+    echo "ERRO: ajuste APP_URL no .env com o endereco do servidor (ex.: https://1-2-3-4.sslip.io)." >&2
     exit 1
 fi
 
@@ -35,8 +35,8 @@ docker compose -f "$COMPOSE_FILE" build app
 echo "==> Subindo containers e aguardando a aplicacao responder..."
 docker compose -f "$COMPOSE_FILE" up -d --force-recreate --wait --wait-timeout 180 app
 
-echo "==> Subindo o backup diario..."
-docker compose -f "$COMPOSE_FILE" up -d backup
+echo "==> Subindo o backup diario e o HTTPS (Caddy)..."
+docker compose -f "$COMPOSE_FILE" up -d backup caddy
 
 echo "==> Limpando imagens antigas..."
 docker image prune -f

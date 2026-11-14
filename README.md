@@ -28,8 +28,9 @@ Testes: `cd backend && php artisan test` (SQLite em memória).
 
 ## Deploy (Digital Ocean)
 
-Um droplet com Docker roda dois containers: `app` (Nginx, PHP-FPM, painel Vue e agendador do desmame) e `db` (PostgreSQL 16).
-Fotos, comprovantes e logs ficam no volume `storage-data`, e o banco no volume `pgdata`.
+Um droplet com Docker roda os containers `caddy` (HTTPS na frente de tudo), `app` (Nginx, PHP-FPM, painel Vue e agendador
+do desmame), `db` (PostgreSQL 16) e `backup`. Fotos, comprovantes e logs ficam no volume `storage-data`, o banco no volume
+`pgdata` e os certificados HTTPS no volume `caddy-data`.
 
 Primeira instalação, no droplet:
 
@@ -42,8 +43,21 @@ nano .env
 docker compose -f docker-compose.prod.yml exec -u www-data app php artisan pecuaria:criar-gestor admin --nome="Fulano"
 ```
 
-A primeira execução cria o `.env` com `APP_KEY` e `DB_PASSWORD` gerados; só falta ajustar `APP_URL`. Se outro projeto
-já usar a porta 80 no droplet, troque `APP_PORT` e inclua a porta no `APP_URL`.
+A primeira execução cria o `.env` com `APP_KEY` e `DB_PASSWORD` gerados; só falta ajustar `APP_URL`.
+
+### HTTPS (Caddy)
+
+O container `caddy` ([docker/caddy/Caddyfile](docker/caddy/Caddyfile)) atende as portas 80 e 443 e repassa para o `app`.
+Com `APP_URL` em `https://`, ele tira o certificado do Let's Encrypt na primeira subida e renova sozinho. O HTTPS é
+obrigatório para o app abrir sem internet (o service worker não funciona em `http://IP`).
+
+- Sem domínio próprio, use o IP do droplet com traços no `sslip.io`: `APP_URL=https://159-65-184-65.sslip.io`.
+- Com domínio, crie um registro DNS `A` apontando para o IP do droplet e use `APP_URL=https://seu.dominio.com.br`.
+- As portas 80 e 443 precisam estar livres no droplet e abertas no firewall (`ufw allow 80 && ufw allow 443`).
+- O `app` só fica exposto em `127.0.0.1:${APP_PORT}` (padrão 8080), para testes no próprio droplet:
+  `curl http://127.0.0.1:8080/up`.
+- Conferir o certificado: `docker compose -f docker-compose.prod.yml logs caddy | grep certificate` e
+  `curl -I https://SEU_ENDERECO/up`.
 
 Atualizações, no droplet:
 

@@ -1,0 +1,7 @@
+# Entrada pública do painel e da API: HTTPS automático (Let's Encrypt) na frente do container "app".
+# O endereço vem do APP_URL do .env. Com https://, o Caddy tira e renova o certificado sozinho;
+# o service worker (app offline) só funciona em HTTPS. Sem domínio, use o IP com traços: https://1-2-3-4.sslip.io
+{$APP_URL} {
+	encode zstd gzip
+	reverse_proxy app:80
+}
