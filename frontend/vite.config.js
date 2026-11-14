@@ -13,7 +13,7 @@ function serviceWorker() {
     enforce: 'post',
     generateBundle(_, bundle) {
       const doBuild = Object.keys(bundle).filter((f) => !f.endsWith('.map') && f !== 'index.html').map((f) => `/${f}`)
-      const arquivos = ['/', '/index.html', '/favicon.svg', ...doBuild]
+      const arquivos = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest', '/icones/icone.svg', '/icones/icone-192.png', ...doBuild]
       const versao = createHash('sha256').update(arquivos.join('|')).digest('hex').slice(0, 12)
       const modelo = readFileSync(fileURLToPath(new URL('./sw.js', import.meta.url)), 'utf8')
       this.emitFile({
