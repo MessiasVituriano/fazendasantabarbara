@@ -1,12 +1,1 @@
-[
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "io.sslip.gestaoagro",
-      "sha256_cert_fingerprints": [
-        "80:18:BF:C0:48:37:BB:6D:D0:2C:85:FE:51:E3:AD:85:3F:F1:98:1B:A1:51:CD:D1:83:B3:CB:7A:57:9E:31:E3"
-      ]
-    }
-  }
-]
+[]
