@@ -1,0 +1,6 @@
+# Tudo aqui é gerado pelo Bubblewrap a partir do twa-manifest.json.
+*
+!.gitignore
+!gerar-apk.sh
+!README.md
+# A chave de assinatura (android.keystore) NUNCA vai para o git: guarde uma cópia fora daqui.
