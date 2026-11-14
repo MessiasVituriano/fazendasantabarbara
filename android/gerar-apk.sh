@@ -6,9 +6,8 @@ cd "$(dirname "$0")"
 
 DOMINIO="${DOMINIO:-159-65-184-65.sslip.io}"
 
-if ! command -v bubblewrap >/dev/null; then
-  npm install -g @bubblewrap/cli
-fi
+# npx roda o Bubblewrap sem instalar nada global (npm install -g pede sudo no Mac).
+bubblewrap() { npx -y @bubblewrap/cli "$@"; }
 
 if [ ! -f twa-manifest.json ]; then
   bubblewrap init --manifest "https://${DOMINIO}/manifest.webmanifest"
