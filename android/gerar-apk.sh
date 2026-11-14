@@ -16,6 +16,7 @@ fi
 bubblewrap build
 
 # assetlinks.json: prova para o Android que o app e o site são do mesmo dono (sem ela aparece a barra do Chrome).
+mkdir -p ../frontend/public/.well-known
 bubblewrap fingerprint generateAssetLinks --output=../frontend/public/.well-known/assetlinks.json
 
 echo

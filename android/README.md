@@ -29,6 +29,11 @@ Saída:
 - `android/app-release-signed.apk`: instale direto no celular (`adb install` ou envie o arquivo).
 - `android/app-release-bundle.aab`: para a Play Store, se um dia publicar.
 
+### Erro "minSdkVersion 21 cannot be smaller than version 24"
+
+O Bubblewrap gera o projeto com `minSdkVersion 21`, mas a biblioteca do TWA exige 24 (Android 7+).
+Troque para 24 em `android/twa-manifest.json` e em `android/app/build.gradle` e rode o script de novo.
+
 ## Depois do primeiro APK
 
 O script grava `frontend/public/.well-known/assetlinks.json` com a impressão digital da chave.
