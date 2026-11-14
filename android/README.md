@@ -20,7 +20,7 @@ Na primeira vez o `bubblewrap init` pergunta:
 | Domain | `159-65-184-65.sslip.io` |
 | Application name / Short name | `Gestão Agropecuária` / `Gestão Agro` |
 | Application ID | `io.sslip.gestaoagro` (não muda depois de publicado) |
-| Display mode / Orientation | `standalone` / `portrait` |
+| Display mode / Orientation | `standalone` / `default` (gira com o celular) |
 | Status bar color | `#007A55` |
 | Key store location / alias | `./android.keystore` / `android` |
 | Senhas | Anote! Sem a chave e a senha não dá para atualizar o app |

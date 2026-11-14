@@ -16,8 +16,25 @@ fi
 bubblewrap build
 
 # assetlinks.json: prova para o Android que o app e o site são do mesmo dono (sem ela aparece a barra do Chrome).
+# A impressão digital sai do próprio APK assinado ("bubblewrap fingerprint" grava [] quando o twa-manifest não a tem).
+KEYTOOL="$(find "$HOME/.bubblewrap/jdk" -path '*Contents/Home/bin/keytool' -o -path '*/bin/keytool' 2>/dev/null | head -1)"
+SHA256="$("${KEYTOOL:-keytool}" -printcert -jarfile app-release-signed.apk | awk '/SHA256:/ {print $2; exit}')"
+PACOTE="$(sed -n 's/.*"packageId": *"\([^"]*\)".*/\1/p' twa-manifest.json)"
 mkdir -p ../frontend/public/.well-known
-bubblewrap fingerprint generateAssetLinks --output=../frontend/public/.well-known/assetlinks.json
+cat > ../frontend/public/.well-known/assetlinks.json <<JSON
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "${PACOTE}",
+      "sha256_cert_fingerprints": [
+        "${SHA256}"
+      ]
+    }
+  }
+]
+JSON
 
 echo
 echo "APK pronto: android/app-release-signed.apk"
