@@ -487,13 +487,13 @@ async function cancelarMovimento() {
             <span v-if="prazo(i)" class="lua-badge" :class="`lua-badge--${prazo(i).tom}`" :title="`Validade ${dataBr(i.data_validade)}`">{{ prazo(i).texto }}</span>
             <span v-if="ehGestor && i.valor_estoque != null" class="text-xs text-muted-foreground tabular-nums">{{ moeda(i.valor_estoque) }}</span>
             <div class="ml-auto flex">
-              <template v-if="i.ativo">
-                <Button variant="ghost" size="icon" :aria-label="`Entrada de ${i.nome}`" @click="abrirMovimento('ENTRADA', i)"><ArrowDownToLine /></Button>
-                <Button variant="ghost" size="icon" :aria-label="`Saída de ${i.nome}`" :disabled="!i.saldo" @click="abrirMovimento('SAIDA', i)"><ArrowUpFromLine /></Button>
-              </template>
               <Button variant="ghost" size="icon" :aria-label="`Histórico de ${i.nome}`" @click="verHistorico(i)"><History /></Button>
               <Button v-if="ehGestor" variant="ghost" size="icon" :aria-label="`Editar ${i.nome}`" @click="abrirItem(i)"><Pencil /></Button>
             </div>
+          </div>
+          <div v-if="i.ativo" class="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" class="lua-acao--entrada" :aria-label="`Entrada de ${i.nome}`" @click="abrirMovimento('ENTRADA', i)"><ArrowDownToLine /> Entrada</Button>
+            <Button variant="outline" size="sm" class="lua-acao--saida" :aria-label="`Saída de ${i.nome}`" :disabled="!Number(i.saldo)" @click="abrirMovimento('SAIDA', i)"><ArrowUpFromLine /> Saída</Button>
           </div>
         </li>
         <li v-if="!itens.length && !carregandoItens" class="px-4 py-3 text-sm text-muted-foreground">Nenhum item encontrado.</li>
@@ -549,10 +549,10 @@ async function cancelarMovimento() {
                 <p v-if="i.custo_unitario != null" class="text-xs text-muted-foreground">{{ moeda(i.custo_unitario) }}/{{ i.unidade_sigla }}</p>
               </TableCell>
               <TableCell class="text-right whitespace-nowrap">
-                <template v-if="i.ativo">
-                  <Button variant="ghost" size="icon" :aria-label="`Entrada de ${i.nome}`" title="Entrada" @click="abrirMovimento('ENTRADA', i)"><ArrowDownToLine /></Button>
-                  <Button variant="ghost" size="icon" :aria-label="`Saída de ${i.nome}`" title="Saída" :disabled="!i.saldo" @click="abrirMovimento('SAIDA', i)"><ArrowUpFromLine /></Button>
-                </template>
+                <span v-if="i.ativo" class="mr-1 inline-flex gap-1.5 align-middle">
+                  <Button variant="outline" size="sm" class="lua-acao--entrada" :aria-label="`Entrada de ${i.nome}`" @click="abrirMovimento('ENTRADA', i)"><ArrowDownToLine /> Entrada</Button>
+                  <Button variant="outline" size="sm" class="lua-acao--saida" :aria-label="`Saída de ${i.nome}`" :title="Number(i.saldo) ? undefined : 'Sem saldo para saída'" :disabled="!Number(i.saldo)" @click="abrirMovimento('SAIDA', i)"><ArrowUpFromLine /> Saída</Button>
+                </span>
                 <Button variant="ghost" size="icon" :aria-label="`Histórico de ${i.nome}`" title="Histórico" @click="verHistorico(i)"><History /></Button>
                 <Button v-if="ehGestor" variant="ghost" size="icon" :aria-label="`Editar ${i.nome}`" title="Editar" @click="abrirItem(i)"><Pencil /></Button>
               </TableCell>
@@ -968,6 +968,11 @@ async function cancelarMovimento() {
 .lua-estoque .lua-meter-fill {
   height: 100%; border-radius: 999px; transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.3s;
 }
+/* Entrada e saída na linha do item: cor do efeito no saldo (verde soma, âmbar tira). */
+.lua-estoque .lua-acao--entrada { color: var(--lua-success); }
+.lua-estoque .lua-acao--entrada:hover { background: var(--lua-success-soft); color: var(--lua-success); }
+.lua-estoque .lua-acao--saida { color: var(--lua-warning); }
+.lua-estoque .lua-acao--saida:hover { background: var(--lua-warning-soft); color: var(--lua-warning); }
 .lua-estoque .lua-fill--success { background: var(--lua-success); }
 .lua-estoque .lua-fill--warning { background: var(--lua-warning); }
 .lua-estoque .lua-fill--danger { background: var(--lua-danger); }
